@@ -60,9 +60,17 @@ class Element(BaseModel):
     variable: Optional[str] = None
 
 
+class LayoutSpec(BaseModel):
+    columns: int = 1
+    rows: int = 1
+    gapXMm: float = 0
+    gapYMm: float = 0
+
+
 class Design(BaseModel):
     widthMm: float = 50
     heightMm: float = 30
+    layout: LayoutSpec = Field(default_factory=LayoutSpec)
     elements: List[Element] = []
 
 

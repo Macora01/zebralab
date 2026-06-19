@@ -24,6 +24,7 @@ function App() {
     const [design, setDesign] = useState({
         widthMm: 50,
         heightMm: 30,
+        layout: { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 },
         elements: [],
     });
     const [selectedId, setSelectedId] = useState(null);
@@ -94,7 +95,14 @@ function App() {
     }
 
     function loadTemplate(t) {
-        setDesign(t.design);
+        // Back-compat: ensure layout exists on older templates
+        const d = t.design || {};
+        setDesign({
+            widthMm: d.widthMm || 50,
+            heightMm: d.heightMm || 30,
+            layout: d.layout || { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 },
+            elements: d.elements || [],
+        });
         setCurrentTemplate({ id: t.id, name: t.name });
         setSelectedId(null);
     }
@@ -105,7 +113,7 @@ function App() {
 
     function newDesign() {
         if (design.elements.length > 0 && !window.confirm("¿Descartar el diseño actual?")) return;
-        setDesign({ widthMm: 50, heightMm: 30, elements: [] });
+        setDesign({ widthMm: 50, heightMm: 30, layout: { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 }, elements: [] });
         setCurrentTemplate(null);
         setSelectedId(null);
     }
@@ -142,7 +150,39 @@ function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <PresetSelect design={design} onChange={updateDesign} />
+                    <PresetSelect
+                        design={design}
+                        onChange={(patch) => {
+                            setSelectedId(null);
+                            updateDesign(patch);
+                        }}
+                    />
+                    <div className="flex items-center gap-1 bg-white border border-brand-300 px-1.5 py-0.5">
+                        <input
+                            data-testid="topbar-width"
+                            type="number"
+                            min={5}
+                            max={300}
+                            step="0.5"
+                            value={design.widthMm}
+                            onChange={(e) => updateDesign({ widthMm: parseFloat(e.target.value) || 0 })}
+                            className="w-14 bg-transparent text-brand-950 text-sm font-mono px-1 py-0.5 focus:outline-none text-right"
+                            title="Ancho de una etiqueta (mm)"
+                        />
+                        <span className="text-brand-700 text-xs font-mono">×</span>
+                        <input
+                            data-testid="topbar-height"
+                            type="number"
+                            min={5}
+                            max={300}
+                            step="0.5"
+                            value={design.heightMm}
+                            onChange={(e) => updateDesign({ heightMm: parseFloat(e.target.value) || 0 })}
+                            className="w-14 bg-transparent text-brand-950 text-sm font-mono px-1 py-0.5 focus:outline-none text-right"
+                            title="Alto de una etiqueta (mm)"
+                        />
+                        <span className="text-brand-700 text-xs font-mono pr-1">mm</span>
+                    </div>
                     <button
                         data-testid="topbar-new"
                         onClick={newDesign}
@@ -313,8 +353,15 @@ function App() {
 }
 
 function PresetSelect({ design, onChange }) {
+    const layout = design.layout || { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 };
     const matched = LABEL_PRESETS.find(
-        (p) => !p.custom && p.widthMm === design.widthMm && p.heightMm === design.heightMm
+        (p) =>
+            !p.custom &&
+            p.widthMm === design.widthMm &&
+            p.heightMm === design.heightMm &&
+            (p.layout?.columns || 1) === layout.columns &&
+            (p.layout?.rows || 1) === layout.rows &&
+            (p.layout?.gapXMm || 0) === layout.gapXMm
     );
     const value = matched ? matched.name : "custom";
     return (
@@ -322,9 +369,18 @@ function PresetSelect({ design, onChange }) {
             data-testid="preset-select"
             value={value}
             onChange={(e) => {
-                if (e.target.value === "custom") return;
+                if (e.target.value === "custom") {
+                    // Reset layout to single but keep current dimensions
+                    onChange({ layout: { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 } });
+                    return;
+                }
                 const preset = LABEL_PRESETS.find((p) => p.name === e.target.value);
-                if (preset) onChange({ widthMm: preset.widthMm, heightMm: preset.heightMm });
+                if (preset)
+                    onChange({
+                        widthMm: preset.widthMm,
+                        heightMm: preset.heightMm,
+                        layout: preset.layout || { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 },
+                    });
             }}
             className="bg-white border border-brand-300 text-brand-900 text-sm rounded-none px-2.5 py-1.5 font-mono focus:outline-none focus:border-brand-900"
         >

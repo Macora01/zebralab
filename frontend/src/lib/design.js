@@ -2,11 +2,14 @@
 export const DEFAULT_PX_PER_MM = 5;
 
 export const LABEL_PRESETS = [
-    { name: "50 × 30 mm", widthMm: 50, heightMm: 30 },
-    { name: "50 × 100 mm", widthMm: 50, heightMm: 100 },
-    { name: "100 × 50 mm", widthMm: 100, heightMm: 50 },
+    { name: "50 × 30 mm", widthMm: 50, heightMm: 30, layout: { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 } },
+    { name: "50 × 30 mm · ×2 horizontal", widthMm: 50, heightMm: 30, layout: { columns: 2, rows: 1, gapXMm: 2, gapYMm: 0 } },
+    { name: "50 × 100 mm", widthMm: 50, heightMm: 100, layout: { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 } },
+    { name: "100 × 50 mm", widthMm: 100, heightMm: 50, layout: { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 } },
     { name: "Personalizado", widthMm: 50, heightMm: 30, custom: true },
 ];
+
+export const DEFAULT_LAYOUT = { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 };
 
 export const ZPL_FONTS = [
     { value: "0", label: "Estándar (0)" },

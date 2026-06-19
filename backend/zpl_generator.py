@@ -111,17 +111,29 @@ def generate_zpl(design: Dict[str, Any]) -> str:
     """Generate full ZPL from a design definition.
 
     design = {
-        "widthMm": 50,
-        "heightMm": 30,
-        "darkness": 10,        # optional ~SD value 0-30
-        "printSpeed": 4,       # optional ^PR
+        "widthMm": 50,        # cell width (single label)
+        "heightMm": 30,       # cell height
+        "layout": {           # optional multi-up grid
+            "columns": 1,
+            "rows": 1,
+            "gapXMm": 0,
+            "gapYMm": 0,
+        },
         "elements": [ ... ]
     }
     """
-    width_mm = float(design.get("widthMm", 50))
-    height_mm = float(design.get("heightMm", 30))
-    pw = mm_to_dots(width_mm)
-    ll = mm_to_dots(height_mm)
+    cell_w = float(design.get("widthMm", 50))
+    cell_h = float(design.get("heightMm", 30))
+    layout = design.get("layout") or {}
+    cols = max(1, int(layout.get("columns", 1)))
+    rows = max(1, int(layout.get("rows", 1)))
+    gap_x = float(layout.get("gapXMm", 0))
+    gap_y = float(layout.get("gapYMm", 0))
+
+    total_w_mm = cols * cell_w + (cols - 1) * gap_x
+    total_h_mm = rows * cell_h + (rows - 1) * gap_y
+    pw = mm_to_dots(total_w_mm)
+    ll = mm_to_dots(total_h_mm)
 
     lines: List[str] = []
     lines.append("CT~~CD,~CC^~CT~")
@@ -143,10 +155,20 @@ def generate_zpl(design: Dict[str, Any]) -> str:
     lines.append(f"^PW{pw}")
     lines.append(f"^LL{ll}")
 
-    for el in design.get("elements", []):
-        zpl_el = generate_element_zpl(el)
-        if zpl_el:
-            lines.append(zpl_el)
+    elements = design.get("elements", [])
+
+    # Duplicate elements across the grid (same content per cell)
+    for r in range(rows):
+        for c in range(cols):
+            ox_mm = c * (cell_w + gap_x)
+            oy_mm = r * (cell_h + gap_y)
+            for el in elements:
+                shifted = dict(el)
+                shifted["x"] = float(el.get("x", 0)) + ox_mm
+                shifted["y"] = float(el.get("y", 0)) + oy_mm
+                zpl_el = generate_element_zpl(shifted)
+                if zpl_el:
+                    lines.append(zpl_el)
 
     lines.append("^PQ1,0,1,Y")
     lines.append("^XZ")

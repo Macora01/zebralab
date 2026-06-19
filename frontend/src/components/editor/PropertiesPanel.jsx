@@ -23,9 +23,12 @@ export default function PropertiesPanel({
     onUpdateDesign,
 }) {
     if (!element) {
+        const layout = design.layout || { columns: 1, rows: 1, gapXMm: 0, gapYMm: 0 };
+        const setLayout = (patch) =>
+            onUpdateDesign({ layout: { ...layout, ...patch } });
         return (
             <div>
-                <SectionTitle>Etiqueta</SectionTitle>
+                <SectionTitle>Etiqueta (celda)</SectionTitle>
                 <div className="p-4">
                     <Field label="Ancho (mm)">
                         <input
@@ -51,7 +54,65 @@ export default function PropertiesPanel({
                             className={inputCls}
                         />
                     </Field>
-                    <div className="mt-6 pt-4 border-t border-brand-200">
+
+                    <div className="mt-5 pt-4 border-t border-brand-200">
+                        <h4 className="text-[10px] font-semibold text-brand-800 uppercase tracking-wider mb-3">
+                            Múltiples etiquetas por tirada
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Field label="Columnas">
+                                <input
+                                    data-testid="prop-layout-cols"
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={layout.columns}
+                                    onChange={(e) => setLayout({ columns: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                                    className={inputCls}
+                                />
+                            </Field>
+                            <Field label="Filas">
+                                <input
+                                    data-testid="prop-layout-rows"
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={layout.rows}
+                                    onChange={(e) => setLayout({ rows: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                                    className={inputCls}
+                                />
+                            </Field>
+                            <Field label="Gap X (mm)">
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step="0.5"
+                                    value={layout.gapXMm}
+                                    onChange={(e) => setLayout({ gapXMm: parseFloat(e.target.value) || 0 })}
+                                    className={inputCls}
+                                    disabled={layout.columns <= 1}
+                                />
+                            </Field>
+                            <Field label="Gap Y (mm)">
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step="0.5"
+                                    value={layout.gapYMm}
+                                    onChange={(e) => setLayout({ gapYMm: parseFloat(e.target.value) || 0 })}
+                                    className={inputCls}
+                                    disabled={layout.rows <= 1}
+                                />
+                            </Field>
+                        </div>
+                        <p className="text-[11px] text-brand-700/80 mt-2 leading-snug">
+                            Diseñas <strong>una sola etiqueta</strong> y se duplica automáticamente
+                            en la grilla con el espacio definido (ej: 2 columnas con gap 2 mm =
+                            dos etiquetas idénticas lado a lado).
+                        </p>
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-brand-200">
                         <p className="text-xs text-brand-800/70 leading-relaxed">
                             Selecciona un elemento del lienzo para editar sus propiedades.
                         </p>
