@@ -17,6 +17,8 @@ import PropertiesPanel from "@/components/editor/PropertiesPanel";
 import TemplatesModal from "@/components/editor/TemplatesModal";
 import BatchModal from "@/components/editor/BatchModal";
 import PreviewModal from "@/components/editor/PreviewModal";
+import PrintModal from "@/components/editor/PrintModal";
+import AgentStatusBadge from "@/components/editor/AgentStatusBadge";
 import { createElement, LABEL_PRESETS } from "@/lib/design";
 import { exportPrn } from "@/lib/api";
 
@@ -33,6 +35,8 @@ function App() {
     const [templatesOpen, setTemplatesOpen] = useState(false);
     const [batchOpen, setBatchOpen] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [printOpen, setPrintOpen] = useState(false);
+    const [agentStatus, setAgentStatus] = useState({ status: "unknown", info: null });
 
     const selectedEl = useMemo(
         () => design.elements.find((e) => e.id === selectedId) || null,
@@ -212,12 +216,23 @@ function App() {
                         <Stack size={15} /> Lote CSV
                     </button>
                     <button
+                        data-testid="topbar-print"
+                        onClick={() => setPrintOpen(true)}
+                        disabled={agentStatus.status !== "connected"}
+                        title={agentStatus.status === "connected" ? "Imprimir directamente vía agente local" : "Inicia el agente local para imprimir directo"}
+                        className="px-3 py-1.5 text-sm bg-green-700 text-white hover:bg-green-800 flex items-center gap-1.5 font-medium disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-brand-400"
+                    >
+                        <Printer size={15} /> Imprimir ahora
+                    </button>
+                    <button
                         data-testid="topbar-export"
                         onClick={handleExport}
                         className="px-3 py-1.5 text-sm bg-brand-900 text-white hover:bg-brand-800 flex items-center gap-1.5 font-medium"
                     >
                         <DownloadSimple size={15} /> Exportar .prn
                     </button>
+                    <div className="h-7 w-px bg-brand-200 mx-1" />
+                    <AgentStatusBadge onStatusChange={setAgentStatus} />
                 </div>
             </header>
 
@@ -341,12 +356,20 @@ function App() {
                 onClose={() => setBatchOpen(false)}
                 design={design}
                 variables={variables}
+                agentInfo={agentStatus.info}
             />
             <PreviewModal
                 open={previewOpen}
                 onClose={() => setPreviewOpen(false)}
                 design={design}
                 variables={variables}
+            />
+            <PrintModal
+                open={printOpen}
+                onClose={() => setPrintOpen(false)}
+                design={design}
+                variables={variables}
+                agentInfo={agentStatus.info}
             />
         </div>
     );

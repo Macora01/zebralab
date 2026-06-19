@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
-import { X, UploadSimple, Printer, Eye } from "@phosphor-icons/react";
-import { parseBatch, generateBatch, previewZpl } from "@/lib/api";
+import { X, UploadSimple, Printer, Eye, DownloadSimple } from "@phosphor-icons/react";
+import { parseBatch, generateBatch, previewZpl, generateZpl } from "@/lib/api";
+import { printZplDirect, getAgentConfig } from "@/lib/agent";
 
 /**
  * Batch import + variable mapping + preview + .prn generation.
@@ -63,6 +64,48 @@ export default function BatchModal({ open, onClose, design, variables }) {
             await generateBatch(design, parsed.rows, mapping, quantityColumn || null);
         } catch (e) {
             setError("Error al generar el lote");
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function handlePrintDirect() {
+        if (!agentInfo) {
+            setError("No hay agente local. Inicia el agente Python en tu Mac.");
+            return;
+        }
+        setBusy(true);
+        setError("");
+        try {
+            // Build a single ZPL stream with all rows substituted (and quantity applied)
+            let combinedZpl = "";
+            let printed = 0;
+            for (const row of parsed.rows) {
+                const subs = {};
+                for (const v of variables) {
+                    const col = mapping[v];
+                    if (col) subs[v] = row[col];
+                }
+                let qty = 1;
+                if (quantityColumn && row[quantityColumn]) {
+                    const parsedQty = parseInt(String(row[quantityColumn]), 10);
+                    if (Number.isFinite(parsedQty) && parsedQty > 0) qty = parsedQty;
+                }
+                const { zpl } = await generateZpl(design, subs);
+                combinedZpl += zpl.repeat(qty);
+                printed += qty;
+            }
+            const cfg = getAgentConfig();
+            await printZplDirect({
+                zpl: combinedZpl,
+                printer: cfg.printer || agentInfo.default_printer,
+                copies: 1,
+            });
+            setError("");
+            // eslint-disable-next-line no-alert
+            window.alert(`✓ ${printed} etiquetas enviadas a la impresora`);
+        } catch (e) {
+            setError(e?.message || "Error al imprimir el lote");
         } finally {
             setBusy(false);
         }
@@ -267,9 +310,18 @@ export default function BatchModal({ open, onClose, design, variables }) {
                                 data-testid="batch-generate-btn"
                                 onClick={handleGenerate}
                                 disabled={busy}
-                                className="px-4 py-2 bg-brand-900 text-white text-sm font-medium hover:bg-brand-800 flex items-center gap-2 disabled:opacity-50"
+                                className="px-4 py-2 bg-white border border-brand-300 text-brand-900 text-sm font-medium hover:bg-brand-100 flex items-center gap-2 disabled:opacity-50"
                             >
-                                <Printer size={16} /> Descargar .prn
+                                <DownloadSimple size={16} /> Descargar .prn
+                            </button>
+                            <button
+                                data-testid="batch-print-direct-btn"
+                                onClick={handlePrintDirect}
+                                disabled={busy || !agentInfo}
+                                title={agentInfo ? "Imprimir directamente vía agente local" : "Inicia el agente local para imprimir directo"}
+                                className="px-4 py-2 bg-green-700 text-white text-sm font-medium hover:bg-green-800 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-brand-400"
+                            >
+                                <Printer size={16} /> Imprimir ahora
                             </button>
                         </div>
                     </div>

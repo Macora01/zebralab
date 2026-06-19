@@ -112,6 +112,20 @@ async def root():
     return {"message": "ZebraLab API", "version": "1.0.0"}
 
 
+@api_router.get("/agent/download")
+async def download_agent():
+    """Serve the local print agent Python script as a download."""
+    agent_path = ROOT_DIR.parent / "companion" / "zebralab_agent.py"
+    if not agent_path.exists():
+        raise HTTPException(status_code=404, detail="Agent script not found")
+    content = agent_path.read_text(encoding="utf-8")
+    return Response(
+        content=content,
+        media_type="text/x-python",
+        headers={"Content-Disposition": "attachment; filename=zebralab_agent.py"},
+    )
+
+
 # ----- ZPL generation -----
 @api_router.post("/zpl/generate")
 async def zpl_generate(req: GenerateRequest):
