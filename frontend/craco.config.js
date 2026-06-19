@@ -61,6 +61,35 @@ let webpackConfig = {
 };
 
 webpackConfig.devServer = (devServerConfig) => {
+  // Compatibility: react-scripts 5 emits v4-style options.
+  // webpack-dev-server v5 rejects unknown keys, so normalize them.
+  const before = devServerConfig.onBeforeSetupMiddleware;
+  const after = devServerConfig.onAfterSetupMiddleware;
+  if (before || after) {
+    delete devServerConfig.onBeforeSetupMiddleware;
+    delete devServerConfig.onAfterSetupMiddleware;
+    const prevSetup = devServerConfig.setupMiddlewares;
+    devServerConfig.setupMiddlewares = (middlewares, devServer) => {
+      if (before) before(devServer);
+      const next = prevSetup ? prevSetup(middlewares, devServer) : middlewares;
+      if (after) after(devServer);
+      return next;
+    };
+  }
+  if ("https" in devServerConfig) {
+    const httpsOpt = devServerConfig.https;
+    delete devServerConfig.https;
+    if (httpsOpt) {
+      devServerConfig.server = httpsOpt === true
+        ? { type: "https" }
+        : { type: "https", options: httpsOpt };
+    }
+  }
+  // Drop legacy / unsupported keys silently
+  for (const legacy of ["http2", "socket", "transportMode", "publicPath", "filename", "writeToDisk", "clientLogLevel", "stats", "noInfo", "quiet", "before", "after", "openPage", "useLocalIp", "disableHostCheck", "overlay", "sockHost", "sockPath", "sockPort", "inline"]) {
+    if (legacy in devServerConfig) delete devServerConfig[legacy];
+  }
+
   // Add health check endpoints if enabled
   if (config.enableHealthCheck && setupHealthEndpoints && healthPluginInstance) {
     const originalSetupMiddlewares = devServerConfig.setupMiddlewares;
