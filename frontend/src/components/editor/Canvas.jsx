@@ -4,6 +4,7 @@ import { getElementBoxMm } from "@/lib/design";
 /**
  * Visual editing canvas with multi-up (grid) support.
  * - Edits happen in CELL 0 (the first label). Other cells render as ghosts.
+ * - Element rendering uses the rotation-aware bounding box (mirrors ZPL footprint).
  */
 export default function Canvas({
     design,
@@ -28,32 +29,38 @@ export default function Canvas({
 
     const [drag, setDrag] = useState(null);
 
-    const onMouseDownEl = (e, el) => {
+    const startDrag = (e, el, cellOffsetXmm, cellOffsetYmm) => {
         e.stopPropagation();
         onSelect(el.id);
         const rect = wrapperRef.current.getBoundingClientRect();
+        // El.x/y are in CELL coords; we drag relative to the cell origin
         setDrag({
             id: el.id,
-            offsetX: e.clientX - rect.left - el.x * pxPerMm,
-            offsetY: e.clientY - rect.top - el.y * pxPerMm,
+            cellOx: cellOffsetXmm * pxPerMm,
+            cellOy: cellOffsetYmm * pxPerMm,
+            offsetX: e.clientX - rect.left - (cellOffsetXmm + el.x) * pxPerMm,
+            offsetY: e.clientY - rect.top - (cellOffsetYmm + el.y) * pxPerMm,
         });
     };
 
     const onMouseMove = useCallback(
         (e) => {
             if (!drag) return;
+            const el = design.elements.find((x) => x.id === drag.id);
+            if (!el) return;
+            const box = getElementBoxMm(el);
             const rect = wrapperRef.current.getBoundingClientRect();
-            const newX = (e.clientX - rect.left - drag.offsetX) / pxPerMm;
-            const newY = (e.clientY - rect.top - drag.offsetY) / pxPerMm;
-            // Constrain to cell 0 bounds (you design within one label)
-            const clampedX = Math.max(0, Math.min(cellWmm - 1, newX));
-            const clampedY = Math.max(0, Math.min(cellHmm - 1, newY));
+            const newX = (e.clientX - rect.left - drag.offsetX - drag.cellOx) / pxPerMm;
+            const newY = (e.clientY - rect.top - drag.offsetY - drag.cellOy) / pxPerMm;
+            // Allow placing right at the edge (no -1) but clamp considering element bbox
+            const clampedX = Math.max(0, Math.min(Math.max(0, cellWmm - box.w), newX));
+            const clampedY = Math.max(0, Math.min(Math.max(0, cellHmm - box.h), newY));
             onUpdate(drag.id, {
                 x: Math.round(clampedX * 10) / 10,
                 y: Math.round(clampedY * 10) / 10,
             });
         },
-        [drag, pxPerMm, cellWmm, cellHmm, onUpdate]
+        [drag, design.elements, pxPerMm, cellWmm, cellHmm, onUpdate]
     );
 
     const onMouseUp = useCallback(() => setDrag(null), []);
@@ -83,6 +90,14 @@ export default function Canvas({
 
     const multiUp = cols > 1 || rows > 1;
 
+    // Compute overflow elements for warning
+    const overflowIds = design.elements
+        .filter((el) => {
+            const b = getElementBoxMm(el);
+            return el.x + b.w > cellWmm + 0.1 || el.y + b.h > cellHmm + 0.1;
+        })
+        .map((el) => el.id);
+
     return (
         <div className="flex items-center justify-center w-full h-full">
             <div className="flex flex-col items-center gap-3">
@@ -95,6 +110,15 @@ export default function Canvas({
                     )}
                 </div>
 
+                {overflowIds.length > 0 && (
+                    <div
+                        data-testid="overflow-warning"
+                        className="font-mono text-[11px] text-red-700 bg-red-50 border border-red-300 px-2.5 py-1"
+                    >
+                        ⚠ {overflowIds.length} elemento{overflowIds.length > 1 ? "s" : ""} se sale{overflowIds.length > 1 ? "n" : ""} de la etiqueta
+                    </div>
+                )}
+
                 <div
                     ref={wrapperRef}
                     data-testid="label-canvas"
@@ -102,7 +126,6 @@ export default function Canvas({
                     style={{ width: totalWpx, height: totalHpx }}
                     onMouseDown={() => onSelect(null)}
                 >
-                    {/* Render each cell as a white rectangle */}
                     {cellPositions.map(({ r, c, xMm, yMm, isPrimary }) => (
                         <div
                             key={`cell-${r}-${c}`}
@@ -116,39 +139,29 @@ export default function Canvas({
                                 top: yMm * pxPerMm,
                                 width: cellWmm * pxPerMm,
                                 height: cellHmm * pxPerMm,
+                                overflow: "hidden",
                             }}
                         >
                             {multiUp && (
                                 <div
-                                    className={`absolute top-0.5 left-1 font-mono text-[9px] ${
+                                    className={`absolute top-0.5 left-1 font-mono text-[9px] z-10 pointer-events-none ${
                                         isPrimary ? "text-brand-900 font-bold" : "text-brand-700/70"
                                     }`}
                                 >
-                                    {isPrimary ? "edit" : `↻ copia`}
+                                    {isPrimary ? "edit" : "↻ copia"}
                                 </div>
                             )}
-                            {/* Render elements (in this cell). Only the primary cell is interactive */}
                             {design.elements.map((el) => (
                                 <ElementBox
                                     key={`${el.id}-${r}-${c}`}
                                     el={el}
                                     selected={isPrimary && selectedId === el.id}
+                                    overflow={overflowIds.includes(el.id)}
                                     pxPerMm={pxPerMm}
                                     isPrimary={isPrimary}
                                     onMouseDown={
                                         isPrimary
-                                            ? (e) => {
-                                                  // We need wrapper-relative coords; element coords are absolute in cell
-                                                  // Convert by adding cell offset to drag start
-                                                  e.stopPropagation();
-                                                  onSelect(el.id);
-                                                  const rect = wrapperRef.current.getBoundingClientRect();
-                                                  setDrag({
-                                                      id: el.id,
-                                                      offsetX: e.clientX - rect.left - el.x * pxPerMm,
-                                                      offsetY: e.clientY - rect.top - el.y * pxPerMm,
-                                                  });
-                                              }
+                                            ? (e) => startDrag(e, el, xMm, yMm)
                                             : undefined
                                     }
                                 />
@@ -166,53 +179,84 @@ export default function Canvas({
     );
 }
 
-function ElementBox({ el, selected, pxPerMm, isPrimary, onMouseDown }) {
+function ElementBox({ el, selected, overflow, pxPerMm, isPrimary, onMouseDown }) {
     const { w, h } = getElementBoxMm(el);
+    const rot = ((el.rotation || 0) % 360 + 360) % 360;
+
     const style = {
         left: el.x * pxPerMm,
         top: el.y * pxPerMm,
         width: w * pxPerMm,
         height: h * pxPerMm,
-        transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
-        transformOrigin: "top left",
     };
 
     const label = el.isVariable ? `{${el.variable || "campo"}}` : el.data || "";
+    const isVertical = rot === 90 || rot === 270;
+
+    const outlineCls = overflow
+        ? "outline outline-2 outline-red-600"
+        : selected
+          ? "outline outline-2 outline-brand-900"
+          : isPrimary
+            ? "hover:outline hover:outline-1 hover:outline-brand-400"
+            : "opacity-70";
 
     return (
         <div
             data-testid={isPrimary ? `canvas-el-${el.id}` : undefined}
             onMouseDown={onMouseDown}
-            className={`absolute ${isPrimary ? "cursor-move" : "pointer-events-none"} select-none ${
-                selected
-                    ? "outline outline-2 outline-brand-900"
-                    : isPrimary
-                      ? "hover:outline hover:outline-1 hover:outline-brand-400"
-                      : "opacity-70"
-            }`}
+            className={`absolute ${isPrimary ? "cursor-move" : "pointer-events-none"} select-none ${outlineCls}`}
             style={style}
         >
             {el.type === "text" && (
                 <div
-                    className={`w-full h-full flex items-center font-mono ${
+                    className={`w-full h-full flex items-center justify-center font-mono px-0.5 ${
                         el.isVariable
-                            ? "text-brand-700 bg-brand-100/70 border border-dashed border-brand-400 px-1"
+                            ? "text-brand-700 bg-brand-100/70 border border-dashed border-brand-400"
                             : "text-brand-950"
-                    }`}
+                    } overflow-hidden`}
                     style={{
-                        fontSize: Math.max(8, (el.fontSize || 3) * pxPerMm * 0.7),
+                        fontSize: Math.max(7, (el.fontSize || 3) * pxPerMm * 0.55),
                         lineHeight: 1,
+                        writingMode: isVertical ? "vertical-rl" : "horizontal-tb",
+                        transform: rot === 270 ? "rotate(180deg)" : rot === 180 ? "rotate(180deg)" : undefined,
                     }}
                 >
                     {label || <span className="opacity-40">Texto</span>}
                 </div>
             )}
             {el.type === "barcode" && (
-                <div className="w-full h-full bg-brand-100 border border-brand-700 flex flex-col items-center justify-center text-[9px] text-brand-900 font-mono overflow-hidden">
-                    <div className="uppercase tracking-wider opacity-70">
-                        {el.symbology}
-                    </div>
-                    <div className="truncate px-1">{label || "—"}</div>
+                <div
+                    className={`w-full h-full bg-brand-100 border border-brand-700 flex items-center justify-center text-[9px] text-brand-900 font-mono overflow-hidden ${
+                        isVertical ? "flex-row" : "flex-col"
+                    }`}
+                >
+                    {el.symbology === "qr" ? (
+                        <div className="flex flex-col items-center">
+                            <div className="font-bold tracking-wider">QR</div>
+                            <div className="truncate px-1 max-w-full text-[8px]">{label || "—"}</div>
+                        </div>
+                    ) : (
+                        <>
+                            <div
+                                className="uppercase tracking-wider opacity-70"
+                                style={{
+                                    writingMode: isVertical ? "vertical-rl" : "horizontal-tb",
+                                }}
+                            >
+                                {el.symbology}
+                            </div>
+                            <div
+                                className="truncate px-1"
+                                style={{
+                                    writingMode: isVertical ? "vertical-rl" : "horizontal-tb",
+                                    maxWidth: "100%",
+                                }}
+                            >
+                                {label || "—"}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
             {el.type === "rectangle" && (
@@ -235,7 +279,9 @@ function ElementBox({ el, selected, pxPerMm, isPrimary, onMouseDown }) {
                     }}
                 />
             )}
-            {selected && <div className="el-handle" style={{ right: -4, bottom: -4 }} />}
+            {selected && (
+                <div className="el-handle" style={{ right: -4, bottom: -4 }} />
+            )}
         </div>
     );
 }

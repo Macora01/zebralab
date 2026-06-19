@@ -76,23 +76,55 @@ export function createElement(type, opts = {}) {
     return base;
 }
 
-// Approximate visual width of element on canvas (in mm) for selection box
+// Approximate visual dimensions (in mm) of an element AFTER applying its rotation.
+// Returns the actual bounding box the element occupies on the printed label.
+// These estimates intentionally err on the conservative (larger) side so the
+// editor warns about overflow before it happens at print time.
 export function getElementBoxMm(el) {
+    let baseW = 10;
+    let baseH = 10;
     if (el.type === "text") {
         const fs = el.fontSize || 3;
-        const text = el.isVariable ? `{${el.variable || "var"}}` : el.data || "";
-        const w = Math.max(6, fs * (el.fontWidthRatio || 1) * 0.7 * Math.max(2, text.length));
-        return { w, h: fs * 1.4 };
-    }
-    if (el.type === "barcode") {
+        const text = el.isVariable ? `{${el.variable || "var"}}` : el.data || "X";
+        // ZPL fonts: characters are roughly 60-70% of font height in width.
+        const charW = fs * (el.fontWidthRatio || 1) * 0.6;
+        baseW = Math.max(2, charW * Math.max(1, text.length));
+        baseH = fs * 1.2;
+    } else if (el.type === "barcode") {
         if (el.symbology === "qr") {
-            const m = (el.magnification || 3) * 3.5;
-            return { w: m, h: m };
+            // QR module size = magnification * 0.125 mm (at 203 dpi, 1 module = mag dots)
+            // For typical 10-30 char payloads -> Version 2-4 = 25-33 modules + 8 modules quiet zone
+            const m = (el.magnification || 3);
+            const text = el.isVariable ? `{${el.variable || "var"}}` : el.data || "";
+            const modules =
+                text.length <= 14 ? 25 : text.length <= 24 ? 29 : text.length <= 34 ? 33 : 37;
+            const sizeMm = (modules + 8) * (m * 0.125); // include quiet zone
+            baseW = sizeMm;
+            baseH = sizeMm;
+        } else {
+            // Linear barcodes (^BY2 default => element width = 2 dots = 0.25mm)
+            const text = el.isVariable ? `{${el.variable || "var"}}` : el.data || "";
+            const len = Math.max(6, text.length);
+            // Code128 ~ 11 modules per char + ~30 modules overhead, * 0.25mm
+            // EAN13/8/UPC are fixed but we estimate generously
+            const charPerMm = 0.35; // ~1 char per 0.35 mm wide approximation
+            const widthMm = el.symbology === "ean13" ? 38 : el.symbology === "ean8" ? 27 : len / charPerMm + 4;
+            baseW = widthMm;
+            // Height + 3mm for human-readable text below if shown
+            baseH = (el.height || 8) + (el.humanReadable === false ? 0 : 3.5);
         }
-        const text = el.isVariable ? `{${el.variable || "var"}}` : el.data || "";
-        return { w: Math.max(20, text.length * 2.2), h: (el.height || 8) + 3 };
+    } else if (el.type === "rectangle") {
+        baseW = el.width || 10;
+        baseH = el.height || 10;
+    } else if (el.type === "line") {
+        baseW = el.width || 10;
+        baseH = el.height || 0.3;
     }
-    if (el.type === "rectangle") return { w: el.width || 10, h: el.height || 10 };
-    if (el.type === "line") return { w: el.width || 10, h: el.height || 0.3 };
-    return { w: 10, h: 10 };
+
+    // Swap dimensions when rotated 90° or 270° to reflect actual footprint
+    const rot = ((el.rotation || 0) % 360 + 360) % 360;
+    if (rot === 90 || rot === 270) {
+        return { w: baseH, h: baseW };
+    }
+    return { w: baseW, h: baseH };
 }
