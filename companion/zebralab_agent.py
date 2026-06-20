@@ -140,8 +140,12 @@ class AgentHandler(BaseHTTPRequestHandler):
         # Private Network Access (Chrome 104+): explicitly allow requests
         # from public HTTPS origins (e.g. https://zebra.facore.cl) to
         # http://localhost. Without this, modern Chrome blocks the call.
-        self.send_header("Access-Control-Allow-Private-Network", "true")
-        self.send_header("Access-Control-Max-Age", "86400")
+        # self.send_header("Access-Control-Allow-Private-Network", "true")
+        self.send_header(\"Access-Control-Allow-Private-Network\", \"true\")
+        # self.send_header("Access-Control-Max-Age", "86400")
+        self.send_header(\"Access-Control-Max-Age\", \"86400\")
+
+  
 
     def _json(self, status: int, payload: dict):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
