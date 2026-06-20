@@ -6,9 +6,16 @@ RUN apk add --no-cache python3 make g++ git
 
 WORKDIR /app
 
-# Install dependencies (cached layer)
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --network-timeout 600000
+# Install dependencies (cached layer). yarn.lock is optional: if missing,
+# yarn will resolve from package.json. The `yarn.lock*` glob copies it only
+# when present in the build context (no failure if absent).
+COPY package.json ./
+COPY yarn.lock* ./
+RUN if [ -f yarn.lock ]; then \
+      yarn install --frozen-lockfile --network-timeout 600000; \
+    else \
+      yarn install --network-timeout 600000; \
+    fi
 
 # Build
 COPY . .
