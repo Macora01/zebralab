@@ -44,6 +44,10 @@ services:
       - zebralab
     ports:
       - "80"
+    labels:
+      # Coolify magic env var: tells Traefik this container serves on port 80
+      - "coolify.managed=true"
+      - "coolify.port=80"
 
 volumes:
   mongo_data:
