@@ -18,6 +18,7 @@ import TemplatesModal from "@/components/editor/TemplatesModal";
 import BatchModal from "@/components/editor/BatchModal";
 import PreviewModal from "@/components/editor/PreviewModal";
 import PrintModal from "@/components/editor/PrintModal";
+import RawTemplateModal from "@/components/editor/RawTemplateModal";
 import AgentStatusBadge from "@/components/editor/AgentStatusBadge";
 import { createElement, LABEL_PRESETS } from "@/lib/design";
 import { exportPrn } from "@/lib/api";
@@ -37,6 +38,8 @@ function App() {
     const [previewOpen, setPreviewOpen] = useState(false);
     const [printOpen, setPrintOpen] = useState(false);
     const [agentStatus, setAgentStatus] = useState({ status: "unknown", info: null });
+    const [rawTemplate, setRawTemplate] = useState(null); // when opening a raw (.prn) template
+    const [toast, setToast] = useState(null); // { type, message }
 
     const selectedEl = useMemo(
         () => design.elements.find((e) => e.id === selectedId) || null,
@@ -99,7 +102,13 @@ function App() {
     }
 
     function loadTemplate(t) {
-        // Back-compat: ensure layout exists on older templates
+        // Raw (.prn) templates open in a dedicated print/download dialog
+        if (t.kind === "raw") {
+            setRawTemplate(t);
+            showToast("success", `Archivo .prn "${t.name}" abierto`);
+            return;
+        }
+        // Visual templates: load into the editor
         const d = t.design || {};
         setDesign({
             widthMm: d.widthMm || 50,
@@ -109,6 +118,12 @@ function App() {
         });
         setCurrentTemplate({ id: t.id, name: t.name });
         setSelectedId(null);
+        showToast("success", `Plantilla "${t.name}" cargada`);
+    }
+
+    function showToast(type, message) {
+        setToast({ type, message });
+        setTimeout(() => setToast(null), 3000);
     }
 
     async function handleExport() {
@@ -371,6 +386,26 @@ function App() {
                 variables={variables}
                 agentInfo={agentStatus.info}
             />
+            <RawTemplateModal
+                open={!!rawTemplate}
+                template={rawTemplate}
+                onClose={() => setRawTemplate(null)}
+                agentInfo={agentStatus.info}
+            />
+
+            {/* Toast notifications */}
+            {toast && (
+                <div
+                    data-testid="toast"
+                    className={`fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 shadow-lg border font-mono text-sm animate-in fade-in slide-in-from-top-4 ${
+                        toast.type === "success"
+                            ? "bg-green-50 border-green-300 text-green-900"
+                            : "bg-red-50 border-red-300 text-red-900"
+                    }`}
+                >
+                    {toast.message}
+                </div>
+            )}
         </div>
     );
 }

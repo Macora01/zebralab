@@ -79,22 +79,27 @@ class Design(BaseModel):
 
 class TemplateCreate(BaseModel):
     name: str
-    design: Design
+    design: Optional[Design] = None
     notes: Optional[str] = ""
+    kind: Optional[str] = "visual"  # "visual" or "raw"
+    rawZpl: Optional[str] = None
 
 
 class TemplateUpdate(BaseModel):
     name: Optional[str] = None
     design: Optional[Design] = None
     notes: Optional[str] = None
+    rawZpl: Optional[str] = None
 
 
 class Template(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
-    design: Design
+    design: Optional[Design] = None
     notes: Optional[str] = ""
+    kind: str = "visual"
+    rawZpl: Optional[str] = None
     createdAt: str
     updatedAt: str
 
@@ -235,8 +240,10 @@ async def create_template(payload: TemplateCreate):
     doc = {
         "id": str(uuid.uuid4()),
         "name": payload.name,
-        "design": payload.design.model_dump(),
+        "design": payload.design.model_dump() if payload.design else None,
         "notes": payload.notes or "",
+        "kind": payload.kind or "visual",
+        "rawZpl": payload.rawZpl,
         "createdAt": _now_iso(),
         "updatedAt": _now_iso(),
     }
@@ -292,14 +299,110 @@ async def duplicate_template(template_id: str):
     new_doc = {
         "id": str(uuid.uuid4()),
         "name": f"{doc['name']} (copia)",
-        "design": doc["design"],
+        "design": doc.get("design"),
         "notes": doc.get("notes", ""),
+        "kind": doc.get("kind", "visual"),
+        "rawZpl": doc.get("rawZpl"),
         "createdAt": _now_iso(),
         "updatedAt": _now_iso(),
     }
     await db.templates.insert_one(new_doc)
     new_doc.pop("_id", None)
     return Template(**new_doc)
+
+
+@api_router.post("/templates/import-prn", response_model=Template)
+async def import_prn_template(file: UploadFile = File(...), name: Optional[str] = Form(None)):
+    """Import an existing .prn / .zpl file as a 'raw' template that preserves
+    the original ZPL byte-for-byte. Useful to bring in ZebraDesigner outputs.
+    """
+    content_bytes = await file.read()
+    try:
+        content = content_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        content = content_bytes.decode("latin-1", errors="ignore")
+    if "^XA" not in content:
+        raise HTTPException(status_code=400, detail="Archivo inválido: no contiene comandos ZPL (^XA)")
+    display_name = name or (file.filename or "Importado").rsplit(".", 1)[0]
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": display_name,
+        "design": None,
+        "notes": f"Importado desde {file.filename or 'archivo'}",
+        "kind": "raw",
+        "rawZpl": content,
+        "createdAt": _now_iso(),
+        "updatedAt": _now_iso(),
+    }
+    await db.templates.insert_one(doc)
+    doc.pop("_id", None)
+    return Template(**doc)
+
+
+# ----- Raw ZPL preview/export (for imported .prn templates) -----
+class RawRequest(BaseModel):
+    zpl: str
+    substitutions: Optional[Dict[str, Any]] = None
+    widthMm: Optional[float] = None
+    heightMm: Optional[float] = None
+
+
+def _extract_dimensions_from_zpl(zpl: str) -> tuple:
+    """Extract widthMm and heightMm from ^PW and ^LL commands in ZPL."""
+    import re
+    pw_match = re.search(r"\^PW(\d+)", zpl)
+    ll_match = re.search(r"\^LL(\d+)", zpl)
+    from zpl_generator import DOTS_PER_MM
+    width_dots = int(pw_match.group(1)) if pw_match else 400
+    height_dots = int(ll_match.group(1)) if ll_match else 240
+    return width_dots / DOTS_PER_MM, height_dots / DOTS_PER_MM
+
+
+@api_router.post("/raw/variables")
+async def raw_variables(req: RawRequest):
+    return {"variables": extract_variables(req.zpl)}
+
+
+@api_router.post("/raw/export")
+async def raw_export(req: RawRequest):
+    zpl = req.zpl
+    if req.substitutions:
+        zpl = substitute_variables(zpl, req.substitutions)
+    return Response(
+        content=zpl,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": "attachment; filename=etiqueta.prn"},
+    )
+
+
+@api_router.post("/raw/preview")
+async def raw_preview(req: RawRequest):
+    zpl = req.zpl
+    if req.substitutions:
+        zpl = substitute_variables(zpl, req.substitutions)
+    # Fill remaining placeholders for visual preview
+    leftover = extract_variables(zpl)
+    if leftover:
+        zpl_for_preview = substitute_variables(zpl, {k: f"[{k}]" for k in leftover})
+    else:
+        zpl_for_preview = zpl
+
+    w_mm, h_mm = (req.widthMm, req.heightMm) if req.widthMm and req.heightMm else _extract_dimensions_from_zpl(zpl)
+    width_in = w_mm / 25.4
+    height_in = h_mm / 25.4
+    try:
+        url = f"http://api.labelary.com/v1/printers/8dpmm/labels/{width_in:.3f}x{height_in:.3f}/0/"
+        resp = requests.post(
+            url,
+            data=zpl_for_preview.encode("utf-8"),
+            headers={"Accept": "image/png"},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Labelary error: {resp.text[:200]}")
+        return Response(content=resp.content, media_type="image/png")
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Preview service unavailable: {e}")
 
 
 # ----- Batch CSV/Excel -----

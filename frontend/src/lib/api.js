@@ -86,6 +86,44 @@ export function imageThumbnailUrl(imageId) {
     return `${API}/image/${imageId}/thumbnail`;
 }
 
+export async function importPrnTemplate(file, name) {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (name) fd.append("name", name);
+    const { data } = await api.post("/templates/import-prn", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+}
+
+export async function rawVariables(zpl) {
+    const { data } = await api.post("/raw/variables", { zpl });
+    return data.variables;
+}
+
+export async function rawPreview(zpl, substitutions) {
+    const res = await api.post(
+        "/raw/preview",
+        { zpl, substitutions },
+        { responseType: "blob" }
+    );
+    return URL.createObjectURL(res.data);
+}
+
+export async function rawExport(zpl, substitutions, filename = "etiqueta.prn") {
+    const res = await api.post(
+        "/raw/export",
+        { zpl, substitutions },
+        { responseType: "blob" }
+    );
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 export async function generateBatch(design, rows, mapping, quantityColumn) {
     const res = await api.post(
         "/batch/generate",
