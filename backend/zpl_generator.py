@@ -6,10 +6,14 @@ Coordinates:
 - ZPL uses dots. At 203 dpi (Zebra ZD220), 1 mm = 8 dots.
 """
 from typing import List, Dict, Any, Optional
+from pathlib import Path
 import re
+from PIL import Image
 
 DPI = 203
 DOTS_PER_MM = DPI / 25.4  # ~8.0
+UPLOADS_DIR = Path(__file__).parent / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
 
 
 def mm_to_dots(mm: float) -> int:
@@ -104,7 +108,61 @@ def generate_element_zpl(el: Dict[str, Any]) -> str:
             h = 1
         return f"^FO{x},{y}^GB{w},{h},{max(w,h)},B,0^FS"
 
+    if el_type == "image":
+        image_id = el.get("imageId")
+        if not image_id:
+            return ""
+        width_mm = float(el.get("width", 20))
+        threshold = int(el.get("threshold", 128))
+        gfa = image_to_zpl_gfa(image_id, width_mm, threshold)
+        if not gfa:
+            return ""
+        return f"^FO{x},{y}{gfa}^FS"
+
     return ""
+
+
+def image_to_zpl_gfa(image_id: str, width_mm: float, threshold: int = 128) -> str:
+    """Convert a stored image to a ZPL ^GFA graphic field command.
+
+    Returns the ^GFA,... string (without ^FO prefix or ^FS suffix), or empty.
+    """
+    safe_id = re.sub(r"[^A-Za-z0-9_\-]", "", image_id)
+    candidates = list(UPLOADS_DIR.glob(f"{safe_id}.*"))
+    if not candidates:
+        return ""
+    src_path = candidates[0]
+    try:
+        img = Image.open(src_path)
+    except (FileNotFoundError, OSError):
+        return ""
+
+    target_w_dots = max(8, mm_to_dots(width_mm))
+    # Compute height keeping aspect ratio
+    ratio = img.height / max(1, img.width)
+    target_h_dots = max(1, int(round(target_w_dots * ratio)))
+
+    # Resize and convert to 1-bit monochrome with simple threshold
+    img = img.convert("RGBA")
+    bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    bg.paste(img, mask=img.split()[3] if img.mode == "RGBA" else None)
+    img = bg.convert("L").resize((target_w_dots, target_h_dots), Image.LANCZOS)
+    # Threshold (0 = black, 255 = white). ZPL: 1 = printed (black), 0 = white.
+    img_bw = img.point(lambda p: 0 if p < threshold else 255, mode="1")
+
+    width_px = img_bw.width
+    height_px = img_bw.height
+    bytes_per_row = (width_px + 7) // 8
+    total_bytes = bytes_per_row * height_px
+
+    raw = img_bw.tobytes()
+    # PIL "1" mode packs bits MSB-first within each byte, matching ZPL.
+    # But rows are padded to byte boundary; PIL pads with 0s. ZPL expects same.
+    # We invert bits because PIL "1" has 1=white,0=black after our threshold.
+    inverted = bytes((~b) & 0xFF for b in raw)
+    hex_data = inverted.hex().upper()
+
+    return f"^GFA,{total_bytes},{total_bytes},{bytes_per_row},{hex_data}"
 
 
 def generate_zpl(design: Dict[str, Any]) -> str:

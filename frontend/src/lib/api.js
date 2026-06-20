@@ -73,6 +73,19 @@ export async function parseBatch(file) {
     return data;
 }
 
+export async function uploadImage(file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const { data } = await api.post("/image/upload", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data; // { id, width, height, ext }
+}
+
+export function imageThumbnailUrl(imageId) {
+    return `${API}/image/${imageId}/thumbnail`;
+}
+
 export async function generateBatch(design, rows, mapping, quantityColumn) {
     const res = await api.post(
         "/batch/generate",

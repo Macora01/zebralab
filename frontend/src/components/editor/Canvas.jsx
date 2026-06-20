@@ -279,6 +279,23 @@ function ElementBox({ el, selected, overflow, pxPerMm, isPrimary, onMouseDown })
                     }}
                 />
             )}
+            {el.type === "image" && (
+                <div className="w-full h-full bg-brand-50 border border-brand-300 overflow-hidden flex items-center justify-center">
+                    {el.imageId ? (
+                        <img
+                            src={`${process.env.REACT_APP_BACKEND_URL}/api/image/${el.imageId}/thumbnail`}
+                            alt="logo"
+                            className="w-full h-full object-contain"
+                            style={{ filter: "grayscale(1) contrast(1.4)" }}
+                            draggable={false}
+                        />
+                    ) : (
+                        <span className="text-[10px] text-brand-700 px-2 text-center">
+                            Sin imagen · sube una
+                        </span>
+                    )}
+                </div>
+            )}
             {selected && (
                 <div className="el-handle" style={{ right: -4, bottom: -4 }} />
             )}

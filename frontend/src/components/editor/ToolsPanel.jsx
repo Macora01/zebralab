@@ -1,5 +1,5 @@
 import React from "react";
-import { TextT, Barcode, Square, LineSegment, QrCode } from "@phosphor-icons/react";
+import { TextT, Barcode, Square, LineSegment, QrCode, Image as ImageIcon } from "@phosphor-icons/react";
 import { createElement } from "@/lib/design";
 
 const TOOLS = [
@@ -8,6 +8,7 @@ const TOOLS = [
     { type: "barcode", label: "Code 128", Icon: Barcode, opts: { symbology: "code128" } },
     { type: "barcode", label: "EAN-13", Icon: Barcode, opts: { symbology: "ean13", data: "7800000000017" } },
     { type: "barcode", label: "QR Code", Icon: QrCode, opts: { symbology: "qr" } },
+    { type: "image", label: "Imagen / Logo", Icon: ImageIcon, opts: {}, key: "image" },
     { type: "rectangle", label: "Rectángulo", Icon: Square, opts: {} },
     { type: "line", label: "Línea", Icon: LineSegment, opts: {} },
 ];

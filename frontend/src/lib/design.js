@@ -73,6 +73,16 @@ export function createElement(type, opts = {}) {
     if (type === "line") {
         return { ...base, width: 20, height: 0.3, ...opts };
     }
+    if (type === "image") {
+        return {
+            ...base,
+            imageId: null,
+            width: 25,
+            height: 25,
+            threshold: 128,
+            ...opts,
+        };
+    }
     return base;
 }
 
@@ -119,6 +129,9 @@ export function getElementBoxMm(el) {
     } else if (el.type === "line") {
         baseW = el.width || 10;
         baseH = el.height || 0.3;
+    } else if (el.type === "image") {
+        baseW = el.width || 25;
+        baseH = el.height || 25;
     }
 
     // Swap dimensions when rotated 90° or 270° to reflect actual footprint

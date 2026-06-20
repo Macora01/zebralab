@@ -58,6 +58,9 @@ class Element(BaseModel):
     # variable
     isVariable: Optional[bool] = False
     variable: Optional[str] = None
+    # image
+    imageId: Optional[str] = None
+    threshold: Optional[int] = 128
 
 
 class LayoutSpec(BaseModel):
@@ -124,6 +127,47 @@ async def download_agent():
         media_type="text/x-python",
         headers={"Content-Disposition": "attachment; filename=zebralab_agent.py"},
     )
+
+
+# ----- Image upload (for logo / images in labels) -----
+UPLOADS_DIR = ROOT_DIR / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
+ALLOWED_IMG_EXT = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+
+
+@api_router.post("/image/upload")
+async def upload_image(file: UploadFile = File(...)):
+    from PIL import Image as PILImage
+    name = (file.filename or "image").lower()
+    ext = next((e for e in ALLOWED_IMG_EXT if name.endswith(e)), None)
+    if not ext:
+        raise HTTPException(status_code=400, detail="Formato no soportado (PNG, JPG, GIF, BMP, WEBP)")
+    image_id = uuid.uuid4().hex
+    target = UPLOADS_DIR / f"{image_id}{ext}"
+    content = await file.read()
+    target.write_bytes(content)
+    try:
+        with PILImage.open(target) as img:
+            w, h = img.size
+    except Exception as e:
+        target.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"Imagen inválida: {e}")
+    return {"id": image_id, "width": w, "height": h, "ext": ext}
+
+
+@api_router.get("/image/{image_id}/thumbnail")
+async def get_thumbnail(image_id: str):
+    from PIL import Image as PILImage
+    safe = "".join(c for c in image_id if c.isalnum())
+    candidates = list(UPLOADS_DIR.glob(f"{safe}.*"))
+    if not candidates:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    img_path = candidates[0]
+    buf = io.BytesIO()
+    with PILImage.open(img_path) as img:
+        img.thumbnail((400, 400))
+        img.convert("RGB").save(buf, format="PNG")
+    return Response(content=buf.getvalue(), media_type="image/png")
 
 
 # ----- ZPL generation -----

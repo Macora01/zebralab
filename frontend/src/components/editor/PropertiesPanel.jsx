@@ -1,6 +1,7 @@
-import React from "react";
-import { Trash, CopySimple } from "@phosphor-icons/react";
+import React, { useRef } from "react";
+import { Trash, CopySimple, UploadSimple } from "@phosphor-icons/react";
 import { ZPL_FONTS, BARCODE_SYMBOLOGIES } from "@/lib/design";
+import { uploadImage, imageThumbnailUrl } from "@/lib/api";
 
 const Field = ({ label, children }) => (
     <div className="mb-3">
@@ -132,6 +133,7 @@ export default function PropertiesPanel({
                     {element.type === "barcode" && `Código (${element.symbology})`}
                     {element.type === "rectangle" && "Rectángulo"}
                     {element.type === "line" && "Línea"}
+                    {element.type === "image" && "Imagen / Logo"}
                 </h3>
                 <div className="flex items-center gap-1">
                     <button
@@ -477,8 +479,115 @@ export default function PropertiesPanel({
                         </Field>
                     </>
                 )}
+
+                {/* IMAGE */}
+                {element.type === "image" && (
+                    <ImageProperties element={element} upd={upd} />
+                )}
             </div>
         </div>
+    );
+}
+
+function ImageProperties({ element, upd }) {
+    const fileRef = useRef(null);
+    const [uploading, setUploading] = React.useState(false);
+    const [error, setError] = React.useState("");
+
+    async function onFile(f) {
+        setError("");
+        setUploading(true);
+        try {
+            const info = await uploadImage(f);
+            const ratio = info.height / Math.max(1, info.width);
+            const newW = element.width || 25;
+            upd({
+                imageId: info.id,
+                width: newW,
+                height: Math.round(newW * ratio * 10) / 10,
+            });
+        } catch (e) {
+            setError(e?.response?.data?.detail || "Error al subir la imagen");
+        } finally {
+            setUploading(false);
+        }
+    }
+
+    return (
+        <>
+            <Field label="Imagen">
+                {element.imageId && (
+                    <div className="bg-brand-50 border border-brand-300 p-2 mb-2 flex items-center justify-center">
+                        <img
+                            src={imageThumbnailUrl(element.imageId)}
+                            alt="preview"
+                            className="max-h-24 object-contain"
+                            style={{ filter: "grayscale(1) contrast(1.4)" }}
+                        />
+                    </div>
+                )}
+                <button
+                    data-testid="prop-image-upload"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full px-3 py-2 bg-brand-900 text-white text-sm font-medium hover:bg-brand-800 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    <UploadSimple size={16} />
+                    {uploading ? "Subiendo…" : element.imageId ? "Reemplazar imagen" : "Subir imagen (PNG/JPG)"}
+                </button>
+                <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/bmp,image/webp"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+                />
+                {error && <p className="text-red-700 text-xs mt-1.5 font-mono">{error}</p>}
+            </Field>
+
+            <div className="grid grid-cols-2 gap-2">
+                <Field label="Ancho (mm)">
+                    <input
+                        type="number"
+                        step="0.5"
+                        min="2"
+                        value={element.width}
+                        onChange={(e) => upd({ width: parseFloat(e.target.value) || 1 })}
+                        className={inputCls}
+                    />
+                </Field>
+                <Field label="Alto (mm)">
+                    <input
+                        type="number"
+                        step="0.5"
+                        min="2"
+                        value={element.height}
+                        onChange={(e) => upd({ height: parseFloat(e.target.value) || 1 })}
+                        className={inputCls}
+                    />
+                </Field>
+            </div>
+
+            <Field label="Umbral B/N">
+                <input
+                    type="range"
+                    min="1"
+                    max="254"
+                    value={element.threshold || 128}
+                    onChange={(e) => upd({ threshold: parseInt(e.target.value, 10) })}
+                    className="w-full"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-brand-700 mt-0.5">
+                    <span>Más negro</span>
+                    <span>{element.threshold || 128}</span>
+                    <span>Más blanco</span>
+                </div>
+            </Field>
+            <p className="text-[11px] text-brand-700/80 leading-snug">
+                La impresora Zebra es monocromo. Ajusta el umbral para que tu imagen
+                se vea bien (sobre todo en fotos o degradados).
+            </p>
+        </>
     );
 }
 
