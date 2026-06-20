@@ -36,20 +36,66 @@ DEFAULT_PRINTER = os.environ.get(
 
 
 def list_cups_printers():
-    """Return list of installed CUPS printers (name only)."""
+    """Return list of installed CUPS printers (name only).
+
+    Different macOS versions populate different lpstat outputs, so we try
+    several commands and merge the results.
+    """
+    candidates = set()
+
+    # `lpstat -e` (modern macOS): one printer name per line
     try:
         out = subprocess.check_output(
-            ["lpstat", "-p"], text=True, stderr=subprocess.DEVNULL
+            ["lpstat", "-e"], text=True, stderr=subprocess.DEVNULL, timeout=5
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return []
-    printers = []
-    for line in out.splitlines():
-        if line.startswith("printer "):
-            parts = line.split()
-            if len(parts) >= 2:
-                printers.append(parts[1])
-    return printers
+        for line in out.splitlines():
+            name = line.strip()
+            if name:
+                candidates.add(name)
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    # `lpstat -v`: "device for NAME: uri"
+    try:
+        out = subprocess.check_output(
+            ["lpstat", "-v"], text=True, stderr=subprocess.DEVNULL, timeout=5
+        )
+        for line in out.splitlines():
+            # "device for Zebra_...: usb://..."
+            if line.startswith("device for "):
+                rest = line[len("device for "):]
+                name = rest.split(":", 1)[0].strip()
+                if name:
+                    candidates.add(name)
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    # `lpstat -a`: "NAME accepting requests since ..."
+    try:
+        out = subprocess.check_output(
+            ["lpstat", "-a"], text=True, stderr=subprocess.DEVNULL, timeout=5
+        )
+        for line in out.splitlines():
+            parts = line.strip().split()
+            if parts:
+                candidates.add(parts[0])
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    # `lpstat -p`: "printer NAME is idle. ..."
+    try:
+        out = subprocess.check_output(
+            ["lpstat", "-p"], text=True, stderr=subprocess.DEVNULL, timeout=5
+        )
+        for line in out.splitlines():
+            if line.startswith("printer "):
+                parts = line.split()
+                if len(parts) >= 2:
+                    candidates.add(parts[1])
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    return sorted(candidates)
 
 
 def send_zpl_to_printer(zpl: str, printer: str):

@@ -83,21 +83,35 @@ export default function AgentStatusBadge({ onStatusChange }) {
                                 <label className="text-[10px] font-semibold text-brand-800 uppercase tracking-wider mb-1 block">
                                     Impresora
                                 </label>
-                                <select
-                                    data-testid="agent-printer-select"
-                                    value={cfg.printer || info.default_printer}
-                                    onChange={(e) => setCfg(setAgentConfig({ printer: e.target.value }))}
-                                    className="w-full bg-white border border-brand-300 text-brand-950 text-sm rounded-none px-2.5 py-1.5 font-mono focus:outline-none focus:border-brand-900"
-                                >
-                                    {(info.printers || []).length === 0 && (
-                                        <option value="">— Ninguna detectada —</option>
-                                    )}
-                                    {(info.printers || []).map((p) => (
-                                        <option key={p} value={p}>
-                                            {p}
-                                        </option>
-                                    ))}
-                                </select>
+                                {(info.printers || []).length > 0 ? (
+                                    <select
+                                        data-testid="agent-printer-select"
+                                        value={cfg.printer || info.default_printer}
+                                        onChange={(e) => setCfg(setAgentConfig({ printer: e.target.value }))}
+                                        className="w-full bg-white border border-brand-300 text-brand-950 text-sm rounded-none px-2.5 py-1.5 font-mono focus:outline-none focus:border-brand-900"
+                                    >
+                                        {info.printers.map((p) => (
+                                            <option key={p} value={p}>
+                                                {p}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <>
+                                        <input
+                                            data-testid="agent-printer-manual"
+                                            type="text"
+                                            value={cfg.printer || info.default_printer || ""}
+                                            onChange={(e) => setCfg(setAgentConfig({ printer: e.target.value }))}
+                                            placeholder="Nombre exacto de tu impresora"
+                                            className="w-full bg-white border border-brand-300 text-brand-950 text-sm rounded-none px-2.5 py-1.5 font-mono focus:outline-none focus:border-brand-900"
+                                        />
+                                        <p className="mt-1 text-[11px] text-amber-700">
+                                            ⚠ No detecté impresoras automáticamente. Escribe el nombre exacto
+                                            (el mismo que usas en tu script Python).
+                                        </p>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ) : (
