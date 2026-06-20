@@ -6,7 +6,6 @@ services:
       - mongo_data:/data/db
     networks:
       - zebralab
-    # No ports exposed -> only reachable from inside the compose network
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -43,7 +42,7 @@ services:
       - backend
     networks:
       - zebralab
-    expose:
+    ports:
       - "80"
 
 volumes:
