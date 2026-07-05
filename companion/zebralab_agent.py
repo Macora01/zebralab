@@ -140,10 +140,8 @@ class AgentHandler(BaseHTTPRequestHandler):
         # Private Network Access (Chrome 104+): explicitly allow requests
         # from public HTTPS origins (e.g. https://zebra.facore.cl) to
         # http://localhost. Without this, modern Chrome blocks the call.
-        # self.send_header("Access-Control-Allow-Private-Network", "true")
-        self.send_header(\"Access-Control-Allow-Private-Network\", \"true\")
-        # self.send_header("Access-Control-Max-Age", "86400")
-        self.send_header(\"Access-Control-Max-Age\", \"86400\")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
+        self.send_header("Access-Control-Max-Age", "86400")
 
   
 
@@ -244,7 +242,7 @@ def main():
 
     banner(args.port, args.printer)
 
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), AgentHandler)
+    server = ThreadingHTTPServer(("0.0.0.0", args.port), AgentHandler)
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
     try:
