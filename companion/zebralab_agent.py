@@ -136,7 +136,7 @@ class AgentHandler(BaseHTTPRequestHandler):
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Access-Control-Request-Private-Network")
         # Private Network Access (Chrome 104+): explicitly allow requests
         # from public HTTPS origins (e.g. https://zebra.facore.cl) to
         # http://localhost. Without this, modern Chrome blocks the call.
