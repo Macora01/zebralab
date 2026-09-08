@@ -228,7 +228,7 @@ function App() {
                         onClick={() => setBatchOpen(true)}
                         className="px-3 py-1.5 text-sm bg-white border border-brand-300 text-brand-900 hover:bg-brand-100 flex items-center gap-1.5 font-medium"
                     >
-                        <Stack size={15} /> Lote CSV
+                        <Stack size={15} /> Lote CSV/XLSX
                     </button>
                     <button
                         data-testid="topbar-print"
