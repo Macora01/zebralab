@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZebraLab — Manual de Usuario</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --brand-950: #1a0f08;
+    --brand-900: #2d1a0e;
+    --brand-800: #4a2c1a;
+    --brand-700: #6b4226;
+    --brand-500: #a0622e;
+    --brand-300: #d4a882;
+    --brand-200: #e8d0b8;
+    --brand-100: #f5ede3;
+    --brand-50:  #faf5ef;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: #1a0f08;
+    background: white;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 40px;
+  }
+
+  /* ── PORTADA ── */
+  .cover {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    border-left: 6px solid var(--brand-900);
+    padding-left: 40px;
+    page-break-after: always;
+  }
+  .cover .logo-block { margin-bottom: 32px; }
+  .cover .logo-block .app-name {
+    font-size: 48pt;
+    font-weight: 700;
+    color: var(--brand-900);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .cover .logo-block .brand-sub {
+    font-size: 11pt;
+    font-weight: 500;
+    color: var(--brand-700);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .cover h2 {
+    font-size: 18pt;
+    font-weight: 300;
+    color: var(--brand-800);
+    margin-bottom: 40px;
+  }
+  .cover .meta {
+    font-size: 9pt;
+    color: var(--brand-700);
+    line-height: 2;
+  }
+  .cover .meta strong { color: var(--brand-900); }
+
+  /* ── ÍNDICE ── */
+  .toc { page-break-after: always; }
+  .toc h2 { font-size: 16pt; font-weight: 700; color: var(--brand-900); margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--brand-200); }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 6px 0; font-size: 10.5pt; }
+  .toc a { color: var(--brand-800); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc .sub { font-size: 9.5pt; color: var(--brand-700); padding-left: 16px; margin: 3px 0; }
+
+  /* ── SECCIONES ── */
+  section { margin-bottom: 36px; }
+  .page-break { page-break-before: always; }
+
+  h1 {
+    font-size: 20pt;
+    font-weight: 700;
+    color: var(--brand-900);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--brand-300);
+    margin-top: 32px;
+  }
+  h1 .num {
+    display: inline-block;
+    background: var(--brand-900);
+    color: white;
+    font-size: 10pt;
+    padding: 2px 8px;
+    margin-right: 10px;
+    font-weight: 600;
+  }
+
+  h2 {
+    font-size: 13pt;
+    font-weight: 600;
+    color: var(--brand-800);
+    margin: 24px 0 10px;
+    padding-left: 12px;
+    border-left: 3px solid var(--brand-500);
+  }
+
+  h3 {
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--brand-900);
+    margin: 16px 0 8px;
+  }
+
+  p { margin-bottom: 10px; }
+
+  /* ── CALLOUTS ── */
+  .tip, .warn, .info {
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0;
+    font-size: 9.5pt;
+    border-left: 4px solid;
+  }
+  .tip  { background: #f0fdf4; border-color: #16a34a; color: #14532d; }
+  .warn { background: #fffbeb; border-color: #d97706; color: #78350f; }
+  .info { background: var(--brand-50); border-color: var(--brand-500); color: var(--brand-900); }
+  .tip::before  { content: "✓  "; font-weight: 700; }
+  .warn::before { content: "⚠  "; font-weight: 700; }
+  .info::before { content: "ℹ  "; font-weight: 700; }
+
+  /* ── TABLAS ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 9.5pt;
+  }
+  th {
+    background: var(--brand-900);
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--brand-200);
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: var(--brand-50); }
+
+  /* ── CÓDIGO ── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    background: var(--brand-100);
+    color: var(--brand-900);
+    padding: 1px 5px;
+    border: 1px solid var(--brand-200);
+  }
+  pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    background: var(--brand-950);
+    color: #e8d0b8;
+    padding: 16px;
+    margin: 14px 0;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+  pre .comment { color: #6b8a6b; }
+  pre .key    { color: #d4a882; }
+  pre .val    { color: #a8d8a8; }
+
+  /* ── PASOS NUMERADOS ── */
+  .steps { counter-reset: step; padding: 0; list-style: none; }
+  .steps li {
+    counter-increment: step;
+    padding: 8px 8px 8px 44px;
+    margin: 6px 0;
+    position: relative;
+    background: var(--brand-50);
+    border: 1px solid var(--brand-200);
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 12px;
+    top: 8px;
+    background: var(--brand-900);
+    color: white;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    font-weight: 700;
+  }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .badge-req  { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+  .badge-opt  { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+  .badge-num  { background: var(--brand-100); color: var(--brand-900); border: 1px solid var(--brand-300); }
+
+  /* ── PANTALLA SIMULADA ── */
+  .screen-bar {
+    background: var(--brand-900);
+    color: white;
+    padding: 8px 16px;
+    font-size: 9pt;
+    font-weight: 600;
+    margin-top: 16px;
+    letter-spacing: 0.5px;
+  }
+  .screen-body {
+    border: 1px solid var(--brand-300);
+    border-top: none;
+    padding: 16px;
+    background: var(--brand-50);
+    font-size: 9.5pt;
+    margin-bottom: 16px;
+  }
+
+  /* ── FOOTER ── */
+  @page {
+    margin: 20mm 15mm;
+    @bottom-center {
+      content: "ZebraLab — Manual de Usuario | Página " counter(page);
+      font-size: 8pt;
+      color: #6b4226;
+    }
+  }
+
+  ul { padding-left: 20px; margin-bottom: 10px; }
+  ul li { margin: 4px 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 16px 0; }
+  .col-box { background: var(--brand-50); border: 1px solid var(--brand-200); padding: 14px; }
+  .col-box h4 { font-size: 10pt; font-weight: 600; color: var(--brand-900); margin-bottom: 8px; }
+
+  hr { border: none; border-top: 1px solid var(--brand-200); margin: 24px 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ PORTADA -->
+<div class="cover">
+  <div class="logo-block">
+    <div class="app-name">ZebraLab</div>
+    <div class="brand-sub">by BoaIdeia</div>
+  </div>
+  <h2>Manual de Usuario</h2>
+  <div class="meta">
+    <strong>Versión:</strong> 1.0<br>
+    <strong>Impresora:</strong> Zebra ZD220 (203 dpi)<br>
+    <strong>Sistema:</strong> macOS (con CUPS)<br>
+    <strong>Acceso:</strong> Aplicación web (navegador)<br>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ ÍNDICE -->
+<div class="toc">
+  <h2>Índice de contenidos</h2>
+  <ol>
+    <li><a href="#intro">Introducción y requisitos</a></li>
+    <li><a href="#interfaz">Interfaz principal</a>
+      <div class="sub">2.1 Barra superior</div>
+      <div class="sub">2.2 Panel de herramientas</div>
+      <div class="sub">2.3 Lienzo (canvas)</div>
+      <div class="sub">2.4 Panel de propiedades</div>
+    </li>
+    <li><a href="#elementos">Elementos de etiqueta</a>
+      <div class="sub">3.1 Texto estático</div>
+      <div class="sub">3.2 Texto variable</div>
+      <div class="sub">3.3 Códigos de barras</div>
+      <div class="sub">3.4 Rectángulos y líneas</div>
+      <div class="sub">3.5 Imágenes y logos</div>
+    </li>
+    <li><a href="#plantillas">Plantillas</a></li>
+    <li><a href="#preview">Vista previa</a></li>
+    <li><a href="#exportar">Exportar archivo .prn</a></li>
+    <li><a href="#lote">Impresión masiva (CSV / Excel)</a>
+      <div class="sub">7.1 Formato del archivo</div>
+      <div class="sub">7.2 Columnas requeridas y opcionales</div>
+      <div class="sub">7.3 Ejemplos de archivos</div>
+      <div class="sub">7.4 Mapeo de variables</div>
+      <div class="sub">7.5 Columna de cantidad</div>
+    </li>
+    <li><a href="#agente">Agente local de impresión</a></li>
+    <li><a href="#imprimir">Imprimir directamente</a></li>
+    <li><a href="#faq">Preguntas frecuentes</a></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════ 1. INTRO -->
+<section id="intro" class="page-break">
+  <h1><span class="num">1</span> Introducción y requisitos</h1>
+
+  <p>
+    ZebraLab es una aplicación web para diseñar etiquetas Zebra ZPL de forma visual, sin necesitar ZebraDesigner (solo disponible en Windows). Está pensada para usuarios de Mac con impresoras Zebra ZD220 conectadas via USB o red.
+  </p>
+
+  <h2>¿Qué puedes hacer con ZebraLab?</h2>
+  <ul>
+    <li>Diseñar etiquetas visualmente con texto, códigos de barras, imágenes y figuras</li>
+    <li>Guardar y reutilizar diseños como <strong>plantillas</strong></li>
+    <li>Exportar archivos <code>.prn</code> compatibles con tu impresora Zebra</li>
+    <li>Imprimir en masa desde archivos <strong>CSV o Excel</strong></li>
+    <li>Imprimir directamente desde el navegador sin descargar archivos (con el agente local)</li>
+    <li>Importar archivos <code>.prn</code> creados en ZebraDesigner u otras herramientas</li>
+  </ul>
+
+  <h2>Requisitos</h2>
+  <div class="two-col">
+    <div class="col-box">
+      <h4>Para usar la app web</h4>
+      <ul>
+        <li>Navegador moderno (Chrome recomendado)</li>
+        <li>Conexión a internet</li>
+      </ul>
+    </div>
+    <div class="col-box">
+      <h4>Para imprimir directo</h4>
+      <ul>
+        <li>macOS con CUPS instalado</li>
+        <li>Python 3.7+</li>
+        <li>Agente local ejecutándose</li>
+        <li>Impresora Zebra instalada en CUPS</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info">
+    ZebraLab genera ZPL II a 203 dpi (8 dots/mm), el estándar de la Zebra ZD220. Los archivos exportados son compatibles con cualquier script Python que use <code>lp -d NombreImpresora -o raw archivo.prn</code>.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 2. INTERFAZ -->
+<section id="interfaz">
+  <h1><span class="num">2</span> Interfaz principal</h1>
+
+  <p>La aplicación se organiza en tres áreas principales más una barra superior de acciones.</p>
+
+  <div class="screen-bar">BARRA SUPERIOR</div>
+  <div class="screen-body">
+    Logo ZebraLab | Nombre de plantilla activa | Preset de tamaño | Dimensiones (mm) | Nuevo | Plantillas | Vista previa | Lote CSV | Imprimir ahora | Exportar .prn | Estado del agente
+  </div>
+
+  <div class="screen-bar">ÁREA DE TRABAJO</div>
+  <div class="screen-body">
+    <div style="display:grid;grid-template-columns:160px 1fr 200px;gap:8px;font-size:9pt;">
+      <div style="background:#f5ede3;border:1px solid #d4a882;padding:10px;">
+        <strong>Panel izquierdo</strong><br><br>
+        Herramientas:<br>
+        Texto, Variable,<br>
+        Códigos de barras,<br>
+        Imagen, Rectángulo,<br>
+        Línea<br><br>
+        <strong>Capas</strong><br>
+        Lista de elementos
+      </div>
+      <div style="background:#e8dfce;border:2px solid #2d1a0e;padding:16px;text-align:center;">
+        <strong>CANVAS</strong><br>
+        Área de diseño visual<br><br>
+        <div style="background:white;border:2px solid #2d1a0e;width:80px;height:50px;margin:8px auto;display:flex;align-items:center;justify-content:center;font-size:8pt;">Etiqueta</div>
+        <small>Drag & drop · Zoom +/-</small>
+      </div>
+      <div style="background:#f5ede3;border:1px solid #d4a882;padding:10px;">
+        <strong>Panel derecho</strong><br><br>
+        Propiedades del<br>
+        elemento seleccionado:<br><br>
+        X, Y, Rotación,<br>
+        Fuente, Tamaño,<br>
+        Datos/Variable,<br>
+        Dimensiones
+      </div>
+    </div>
+  </div>
+
+  <h2>2.1 Barra superior</h2>
+  <table>
+    <tr><th>Botón</th><th>Función</th></tr>
+    <tr><td><strong>Preset de tamaño</strong></td><td>Selecciona rápidamente entre tamaños predefinidos: 50×30 mm, 50×30 mm ×2, 50×100 mm, 100×50 mm o personalizado</td></tr>
+    <tr><td><strong>Dimensiones (mm)</strong></td><td>Ancho y alto de la etiqueta en milímetros. Editable directamente</td></tr>
+    <tr><td><strong>Nuevo</strong></td><td>Crea un diseño en blanco (pide confirmación si hay cambios sin guardar)</td></tr>
+    <tr><td><strong>Plantillas</strong></td><td>Abre la biblioteca de plantillas guardadas</td></tr>
+    <tr><td><strong>Vista previa</strong></td><td>Muestra cómo quedará la etiqueta impresa (imagen real via Labelary)</td></tr>
+    <tr><td><strong>Lote CSV</strong></td><td>Impresión masiva desde archivo CSV o Excel</td></tr>
+    <tr><td><strong>Imprimir ahora</strong></td><td>Envía directamente a la impresora (requiere agente local activo)</td></tr>
+    <tr><td><strong>Exportar .prn</strong></td><td>Descarga el archivo ZPL listo para imprimir</td></tr>
+  </table>
+
+  <h2>2.2 Lienzo (canvas)</h2>
+  <p>El lienzo representa la etiqueta física en escala visual. Las coordenadas son en <strong>milímetros</strong>.</p>
+  <ul>
+    <li><strong>Mover elementos:</strong> arrastra con el mouse</li>
+    <li><strong>Seleccionar:</strong> clic sobre el elemento</li>
+    <li><strong>Eliminar:</strong> selecciona el elemento y presiona <code>Delete</code> o <code>Backspace</code></li>
+    <li><strong>Zoom:</strong> botones <code>+</code> y <code>-</code> en la esquina inferior derecha</li>
+    <li><strong>Multi-up:</strong> si configuraste más de 1 columna o fila, las copias aparecen sombreadas — solo editas la primera</li>
+  </ul>
+
+  <div class="warn">
+    Si un elemento aparece con borde rojo, significa que se sale de los límites de la etiqueta y podría no imprimirse correctamente.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 3. ELEMENTOS -->
+<section id="elementos" class="page-break">
+  <h1><span class="num">3</span> Elementos de etiqueta</h1>
+
+  <h2>3.1 Texto estático</h2>
+  <p>Texto fijo que siempre imprime el mismo contenido.</p>
+  <table>
+    <tr><th>Propiedad</th><th>Descripción</th></tr>
+    <tr><td>Contenido</td><td>El texto que aparecerá impreso</td></tr>
+    <tr><td>Fuente</td><td>Estándar (0), Compacta (A), Bloque (B), Bold (D), Grande (F)</td></tr>
+    <tr><td>Altura (mm)</td><td>Alto del texto en milímetros</td></tr>
+    <tr><td>Ratio ancho</td><td>Proporción ancho/alto del carácter (1.0 = normal, 0.5 = estrecho, 2.0 = ancho)</td></tr>
+    <tr><td>Rotación</td><td>0°, 90°, 180° o 270°</td></tr>
+    <tr><td>X / Y (mm)</td><td>Posición desde la esquina superior izquierda de la etiqueta</td></tr>
+  </table>
+
+  <h2>3.2 Texto variable</h2>
+  <p>
+    Un campo que se completa en tiempo de impresión con datos del CSV o manualmente. 
+    Usa la sintaxis <code>{nombre_variable}</code> en el ZPL.
+  </p>
+  <div class="tip">
+    Los nombres de variables solo pueden contener letras, números y guión bajo (<code>_</code>). 
+    Ejemplo: <code>precio</code>, <code>codigo_producto</code>, <code>lote</code>.
+  </div>
+  <p><strong>Variable especial:</strong> la variable llamada <code>precio</code> agrega automáticamente el símbolo <code>$ </code> al inicio del valor. Ejemplo: si el CSV tiene <code>9990</code>, se imprime <code>$ 9990</code>.</p>
+
+  <h2>3.3 Códigos de barras</h2>
+  <table>
+    <tr><th>Tipo</th><th>Uso típico</th><th>Datos de ejemplo</th></tr>
+    <tr><td>Code 128</td><td>Logística, inventario general</td><td><code>ABC-12345</code></td></tr>
+    <tr><td>EAN-13</td><td>Productos comerciales (supermercado)</td><td><code>7800000000017</code> (13 dígitos)</td></tr>
+    <tr><td>EAN-8</td><td>Productos pequeños</td><td><code>12345670</code> (8 dígitos)</td></tr>
+    <tr><td>Code 39</td><td>Industrial, autopartes</td><td><code>ITEM-001</code></td></tr>
+    <tr><td>UPC-A</td><td>Mercado norteamericano</td><td><code>012345678905</code> (12 dígitos)</td></tr>
+    <tr><td>QR Code</td><td>URLs, texto largo, datos 2D</td><td><code>https://boaideia.cl</code></td></tr>
+  </table>
+
+  <p>Propiedades adicionales para códigos de barras lineales:</p>
+  <ul>
+    <li><strong>Altura (mm):</strong> alto de las barras</li>
+    <li><strong>Mostrar texto humano:</strong> imprime el número debajo del código</li>
+  </ul>
+  <p>Propiedades adicionales para QR:</p>
+  <ul>
+    <li><strong>Magnificación (1-10):</strong> tamaño de cada módulo del QR</li>
+    <li><strong>Corrección de errores:</strong> L (7%), M (15%), Q (25%), H (30%)</li>
+  </ul>
+
+  <h2>3.4 Rectángulos y líneas</h2>
+  <table>
+    <tr><th>Elemento</th><th>Propiedades</th></tr>
+    <tr><td>Rectángulo</td><td>Ancho, Alto, Grosor del borde (mm)</td></tr>
+    <tr><td>Línea horizontal</td><td>Largo, Grosor (mm)</td></tr>
+  </table>
+
+  <h2>3.5 Imágenes y logos</h2>
+  <p>Sube una imagen PNG o JPG para incluirla en la etiqueta. La imagen se convierte automáticamente a blanco y negro (la impresora Zebra es monocromo).</p>
+  <ul>
+    <li>Formatos: PNG, JPG, GIF, BMP, WEBP</li>
+    <li>Se recomienda usar imágenes con buen contraste (logos en negro sobre blanco)</li>
+    <li><strong>Umbral B/N:</strong> deslizador para ajustar qué tonos se convierten a negro. Valores bajos = más negro, valores altos = más blanco</li>
+  </ul>
+  <div class="tip">
+    Para logos, usa una imagen PNG con fondo transparente o blanco y líneas negras bien definidas para obtener el mejor resultado.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 4. PLANTILLAS -->
+<section id="plantillas" class="page-break">
+  <h1><span class="num">4</span> Plantillas</h1>
+
+  <p>Las plantillas permiten guardar diseños completos y reutilizarlos. Se almacenan en la nube (base de datos del servidor).</p>
+
+  <h2>Guardar una plantilla nueva</h2>
+  <ol class="steps">
+    <li>Haz clic en <strong>Plantillas</strong> en la barra superior</li>
+    <li>En el campo "Guardar diseño actual", escribe un nombre descriptivo</li>
+    <li>Haz clic en <strong>Guardar</strong></li>
+  </ol>
+
+  <h2>Actualizar una plantilla existente</h2>
+  <ol class="steps">
+    <li>Carga la plantilla (botón <strong>Abrir</strong>)</li>
+    <li>Realiza los cambios en el editor</li>
+    <li>Abre <strong>Plantillas</strong> y haz clic en <strong>Actualizar</strong></li>
+  </ol>
+
+  <h2>Otras acciones</h2>
+  <table>
+    <tr><th>Acción</th><th>Descripción</th></tr>
+    <tr><td>Abrir</td><td>Carga el diseño de la plantilla en el editor</td></tr>
+    <tr><td>Descargar</td><td>Descarga el archivo <code>.prn</code> de la plantilla</td></tr>
+    <tr><td>Duplicar</td><td>Crea una copia con el sufijo "(copia)"</td></tr>
+    <tr><td>Eliminar</td><td>Borra la plantilla permanentemente (pide confirmación)</td></tr>
+  </table>
+
+  <h2>Importar archivo .prn existente</h2>
+  <p>Si tienes archivos <code>.prn</code> creados en ZebraDesigner u otras herramientas, puedes importarlos directamente:</p>
+  <ol class="steps">
+    <li>Abre <strong>Plantillas</strong></li>
+    <li>Haz clic en <strong>Subir .prn / .zpl</strong></li>
+    <li>Selecciona tu archivo</li>
+    <li>El archivo queda disponible en la biblioteca con el icono de archivo .prn</li>
+  </ol>
+
+  <div class="info">
+    Las plantillas importadas como <code>.prn</code> no son editables visualmente en el canvas. Se abren en un modal especial donde puedes completar variables, previsualizar e imprimir.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 5. PREVIEW -->
+<section id="preview">
+  <h1><span class="num">5</span> Vista previa</h1>
+
+  <p>La vista previa genera una imagen real de cómo quedará la etiqueta al imprimir, usando el servicio <strong>Labelary</strong>.</p>
+
+  <ol class="steps">
+    <li>Haz clic en <strong>Vista previa</strong> en la barra superior</li>
+    <li>Si tu diseño tiene variables, completa los valores de prueba en el panel izquierdo</li>
+    <li>Haz clic en <strong>Regenerar vista previa</strong> para actualizar</li>
+    <li>El panel derecho muestra la imagen y el panel izquierdo el código ZPL generado</li>
+  </ol>
+
+  <div class="tip">
+    Las variables sin valor se muestran entre corchetes en la vista previa (ej: <code>[precio]</code>) para que puedas identificar dónde aparecerán los datos.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 6. EXPORTAR -->
+<section id="exportar">
+  <h1><span class="num">6</span> Exportar archivo .prn</h1>
+
+  <p>El botón <strong>Exportar .prn</strong> descarga el archivo ZPL listo para enviarlo a la impresora.</p>
+
+  <h2>Usos del archivo .prn</h2>
+  <ul>
+    <li>Enviarlo directamente a la impresora desde Terminal:<br>
+      <code>lp -d Zebra_ZD220 -o raw etiqueta.prn</code></li>
+    <li>Usarlo con el script Python original de BoaIdeia</li>
+    <li>Guardarlo para reutilizarlo en el futuro</li>
+  </ul>
+
+  <div class="warn">
+    Si el diseño tiene variables (campos <code>{nombre}</code>), el archivo exportado las incluirá sin sustituir. Usa el flujo de Lote CSV o el botón "Imprimir ahora" para sustituirlas automáticamente.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 7. LOTE CSV -->
+<section id="lote" class="page-break">
+  <h1><span class="num">7</span> Impresión masiva (CSV / Excel)</h1>
+
+  <p>
+    La función de <strong>Lote CSV</strong> permite generar cientos de etiquetas personalizadas a partir de un archivo de datos, sin tener que editarlas una por una.
+    Cada fila del archivo genera una etiqueta con sus propios datos.
+  </p>
+
+  <h2>7.1 Formato del archivo</h2>
+
+  <p>ZebraLab acepta tres formatos:</p>
+  <table>
+    <tr><th>Formato</th><th>Extensión</th><th>Notas</th></tr>
+    <tr><td>CSV separado por comas</td><td><code>.csv</code></td><td>Separador automático (detecta <code>,</code> y <code>;</code>)</td></tr>
+    <tr><td>Excel moderno</td><td><code>.xlsx</code></td><td>Primera hoja del libro</td></tr>
+    <tr><td>Excel clásico</td><td><code>.xls</code></td><td>Primera hoja del libro</td></tr>
+  </table>
+
+  <h2>7.2 Estructura del archivo</h2>
+
+  <p>El archivo debe tener <strong>una fila de encabezado</strong> (primera fila) con los nombres de las columnas, seguida de una fila por etiqueta:</p>
+
+  <table>
+    <tr><th>Regla</th><th>Detalle</th></tr>
+    <tr><td>Primera fila = encabezados</td><td>Los nombres de columna se usan para el mapeo de variables</td></tr>
+    <tr><td>Una fila = una etiqueta</td><td>Salvo que uses la columna de cantidad</td></tr>
+    <tr><td>Celdas vacías</td><td>Se tratan como texto vacío (no genera error)</td></tr>
+    <tr><td>Encoding CSV</td><td>UTF-8 recomendado. Se aceptan tildes y ñ</td></tr>
+    <tr><td>Números</td><td>Se convierten a texto automáticamente</td></tr>
+  </table>
+
+  <h2>7.3 Ejemplos de archivos</h2>
+
+  <h3>Ejemplo 1 — Etiquetas de precio para productos</h3>
+  <p>Para una etiqueta con variables <code>{producto}</code>, <code>{precio}</code> y <code>{codigo}</code>:</p>
+  <pre><span class="comment"># archivo: precios_temporada.csv</span>
+<span class="key">producto</span>,<span class="key">precio</span>,<span class="key">codigo</span>,<span class="key">cantidad</span>
+Bolsa tela S,4990,BT-001,50
+Bolsa tela M,6990,BT-002,30
+Bolsa tela L,8990,BT-003,20
+Porta documentos,12990,PD-001,15</pre>
+  <p>Este archivo generará <strong>115 etiquetas</strong> en total (suma de la columna cantidad).</p>
+
+  <h3>Ejemplo 2 — Sin columna de cantidad (1 etiqueta por fila)</h3>
+  <pre><span class="comment"># archivo: inventario.csv</span>
+<span class="key">nombre</span>,<span class="key">lote</span>,<span class="key">fecha</span>
+Producto A,LOT-2024-001,15/01/2025
+Producto B,LOT-2024-002,22/01/2025
+Producto C,LOT-2024-003,30/01/2025</pre>
+
+  <h3>Ejemplo 3 — Etiquetas con QR variable</h3>
+  <pre><span class="comment"># archivo: qr_urls.csv</span>
+<span class="key">nombre</span>,<span class="key">url</span>,<span class="key">cantidad</span>
+Catálogo 2025,https://boaideia.cl/catalogo,100
+Instagram,https://instagram.com/boaideia,200
+WhatsApp,https://wa.me/56912345678,150</pre>
+
+  <h3>Ejemplo 4 — Excel (.xlsx)</h3>
+  <p>Mismo formato que CSV pero en un libro Excel. La primera fila debe ser los encabezados:</p>
+  <table>
+    <tr>
+      <th>producto</th>
+      <th>precio</th>
+      <th>codigo_barras</th>
+      <th>cantidad</th>
+    </tr>
+    <tr>
+      <td>Billetera cuero</td>
+      <td>15990</td>
+      <td>7800000001234</td>
+      <td>25</td>
+    </tr>
+    <tr>
+      <td>Monedero</td>
+      <td>8990</td>
+      <td>7800000005678</td>
+      <td>40</td>
+    </tr>
+  </table>
+
+  <h2>7.4 Mapeo de variables</h2>
+
+  <p>
+    Después de cargar el archivo, ZebraLab detecta automáticamente las variables en tu diseño
+    (<code>{variable}</code>) y las columnas del archivo. Si los nombres coinciden, el mapeo es
+    <strong>automático</strong>. Si no coinciden, puedes asignarlos manualmente con los selectores.
+  </p>
+
+  <div class="screen-bar">PANEL DE MAPEO</div>
+  <div class="screen-body">
+    <table style="margin:0;">
+      <tr><th>Variable del diseño</th><th>→</th><th>Columna del archivo</th></tr>
+      <tr><td><code>{producto}</code></td><td>→</td><td>▼ nombre_item (seleccionar)</td></tr>
+      <tr><td><code>{precio}</code></td><td>→</td><td>▼ precio ✓ (detectado)</td></tr>
+      <tr><td><code>{codigo}</code></td><td>→</td><td>▼ codigo_barras (seleccionar)</td></tr>
+    </table>
+  </div>
+
+  <div class="tip">
+    Si la columna se llama igual que la variable (mismo nombre, sin distinguir mayúsculas), el mapeo es automático. Nombra las columnas de tu CSV igual que las variables del diseño para ahorrar tiempo.
+  </div>
+
+  <h2>7.5 Columna de cantidad</h2>
+
+  <p>
+    Si necesitas imprimir más de una etiqueta por fila, agrega una columna con el número de copias.
+    ZebraLab la detecta automáticamente si se llama <code>cantidad</code>, <code>qty</code>,
+    <code>cant</code> o <code>quantity</code>. También puedes seleccionarla manualmente.
+  </p>
+
+  <table>
+    <tr><th>Nombre de columna aceptado</th><th>Idioma</th></tr>
+    <tr><td><code>cantidad</code></td><td>Español</td></tr>
+    <tr><td><code>cant</code></td><td>Español (abreviado)</td></tr>
+    <tr><td><code>quantity</code></td><td>Inglés</td></tr>
+    <tr><td><code>qty</code></td><td>Inglés (abreviado)</td></tr>
+  </table>
+
+  <div class="warn">
+    Si la columna de cantidad contiene un valor no numérico o vacío, esa fila se imprime <strong>1 vez</strong> por defecto.
+  </div>
+
+  <h2>Flujo completo de impresión masiva</h2>
+  <ol class="steps">
+    <li>Diseña tu etiqueta con variables en el editor (ej: <code>{nombre}</code>, <code>{precio}</code>)</li>
+    <li>Haz clic en <strong>Lote CSV</strong> en la barra superior</li>
+    <li>Sube tu archivo CSV o Excel</li>
+    <li>Verifica el mapeo de variables (se hace automáticamente si los nombres coinciden)</li>
+    <li>Selecciona la columna de cantidad si aplica</li>
+    <li>Revisa la tabla de datos (muestra las primeras 5 filas)</li>
+    <li>Haz clic en <strong>Vista previa</strong> para ver la primera etiqueta</li>
+    <li>Haz clic en <strong>Descargar .prn</strong> para obtener el archivo con todas las etiquetas, o <strong>Imprimir ahora</strong> si tienes el agente activo</li>
+  </ol>
+</section>
+
+<!-- ══════════════════════════════════════════════ 8. AGENTE -->
+<section id="agente" class="page-break">
+  <h1><span class="num">8</span> Agente local de impresión</h1>
+
+  <p>
+    El agente local es un pequeño programa Python que corre en tu Mac y permite que ZebraLab
+    envíe trabajos directamente a la impresora Zebra sin descargar archivos manualmente.
+  </p>
+
+  <h2>Instalación y uso</h2>
+  <ol class="steps">
+    <li>Haz clic en el indicador de agente (esquina superior derecha de la app) y selecciona <strong>Descargar zebralab_agent.py</strong></li>
+    <li>Guarda el archivo en una carpeta de tu Mac, por ejemplo: <code>~/Documents/zebralab/</code></li>
+    <li>Abre <strong>Terminal</strong> y ejecuta:<br>
+      <code>python3 ~/Documents/zebralab/zebralab_agent.py</code></li>
+    <li>Verás el mensaje <code>Escuchando en http://localhost:17331</code> y la lista de impresoras detectadas</li>
+    <li>Vuelve a ZebraLab — el indicador cambiará a <strong style="color:#16a34a">● Agente conectado</strong></li>
+  </ol>
+
+  <div class="tip">
+    Deja la ventana de Terminal abierta mientras uses la app. Puedes cerrarla con Ctrl+C cuando termines de imprimir.
+  </div>
+
+  <h2>Opciones avanzadas del agente</h2>
+  <pre><span class="comment"># Puerto personalizado</span>
+python3 zebralab_agent.py --port 17332
+
+<span class="comment"># Especificar impresora por defecto</span>
+python3 zebralab_agent.py --printer "Zebra_Technologies_ZTC_ZD220"
+
+<span class="comment"># Ver el nombre exacto de tu impresora en CUPS</span>
+lpstat -e</pre>
+
+  <h2>Configuración en ZebraLab</h2>
+  <p>Al hacer clic en el indicador de agente puedes:</p>
+  <ul>
+    <li>Seleccionar la impresora de la lista detectada</li>
+    <li>Cambiar el puerto si usaste uno distinto al predeterminado (17331)</li>
+    <li>Verificar la conexión con el botón <strong>Refrescar</strong></li>
+  </ul>
+
+  <div class="warn">
+    Si accedes a ZebraLab desde una URL HTTPS (VPS), Chrome requiere que el agente responda correctamente a las peticiones de red privada. Usa siempre la versión más reciente del agente descargada desde la app.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 9. IMPRIMIR -->
+<section id="imprimir">
+  <h1><span class="num">9</span> Imprimir directamente</h1>
+
+  <p>Con el agente activo, puedes imprimir sin descargar ningún archivo:</p>
+
+  <ol class="steps">
+    <li>Verifica que el indicador muestre <strong style="color:#16a34a">● Agente conectado</strong></li>
+    <li>Haz clic en <strong>Imprimir ahora</strong></li>
+    <li>Si tu diseño tiene variables, completa los valores en el modal</li>
+    <li>Ajusta el número de <strong>copias</strong></li>
+    <li>Haz clic en <strong>Imprimir</strong></li>
+  </ol>
+
+  <div class="two-col">
+    <div class="col-box">
+      <h4>Impresión directa (con agente)</h4>
+      <ul>
+        <li>Sin descargar archivos</li>
+        <li>Inmediata</li>
+        <li>Requiere agente activo en tu Mac</li>
+      </ul>
+    </div>
+    <div class="col-box">
+      <h4>Exportar .prn (sin agente)</h4>
+      <ul>
+        <li>Descarga el archivo</li>
+        <li>Lo envías con <code>lp</code> o tu script</li>
+        <li>Funciona sin conexión</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ 10. FAQ -->
+<section id="faq" class="page-break">
+  <h1><span class="num">10</span> Preguntas frecuentes</h1>
+
+  <h3>¿Por qué la vista previa tarda un poco?</h3>
+  <p>La vista previa usa el servicio público <strong>Labelary</strong> (api.labelary.com) para renderizar el ZPL como imagen. Depende de tu conexión a internet y la disponibilidad de ese servicio.</p>
+
+  <h3>¿Puedo usar la app sin conexión a internet?</h3>
+  <p>No. La app web y el servidor requieren conexión. Sin embargo, los archivos <code>.prn</code> exportados pueden usarse offline con tu script Python o directamente con <code>lp</code>.</p>
+
+  <h3>¿Qué pasa si mi CSV tiene tildes o caracteres especiales?</h3>
+  <p>ZebraLab soporta UTF-8. Guarda tu CSV con encoding UTF-8 (opción disponible en Excel al "Guardar como CSV UTF-8"). El ZPL generado usa <code>^CI27</code> (UTF-8).</p>
+
+  <h3>¿Puedo usar el mismo diseño con distintos archivos CSV?</h3>
+  <p>Sí. Guárdalo como plantilla y úsalo cuantas veces necesites con distintos archivos de datos.</p>
+
+  <h3>¿El archivo .prn descargado es compatible con mi script Python anterior?</h3>
+  <p>Sí. ZebraLab preserva los placeholders <code>{variable}</code> en el ZPL, idéntico al formato que usa tu script BoaIdeia original con <code>lp -d NombreImpresora -o raw</code>.</p>
+
+  <h3>¿Cuántas etiquetas puede generar el lote?</h3>
+  <p>No hay un límite fijo. Se recomienda no superar 5.000 etiquetas por lote para mantener tiempos de respuesta aceptables.</p>
+
+  <h3>¿Puedo hacer etiquetas con 2 o más columnas?</h3>
+  <p>Sí. En el panel de propiedades (sin elemento seleccionado) puedes configurar <strong>Múltiples etiquetas por tirada</strong>, definiendo columnas, filas y el espacio entre ellas.</p>
+
+  <h3>¿El agente funciona en Windows o Linux?</h3>
+  <p>El agente usa el comando <code>lp</code> de CUPS, disponible en macOS y Linux. En Windows requeriría adaptación para usar comandos de impresión distintos.</p>
+
+  <hr>
+
+  <div class="info">
+    <strong>Soporte:</strong> Para reportar problemas o sugerencias, contacta al equipo de desarrollo a través del repositorio en GitHub: <code>https://github.com/Macora01/zebralab</code>
+  </div>
+</section>
+
+</body>
+</html>
