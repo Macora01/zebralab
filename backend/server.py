@@ -477,6 +477,45 @@ async def batch_generate(req: BatchGenerateRequest):
     )
 
 
+# ----- Raw Batch CSV/Excel -----
+class RawBatchRequest(BaseModel):
+    zpl: str
+    rows: List[Dict[str, Any]]
+    mapping: Dict[str, str]
+    quantityColumn: Optional[str] = None
+
+
+@api_router.post("/raw/batch")
+async def raw_batch(req: RawBatchRequest):
+    """Generate a single .prn from a raw ZPL template + CSV rows."""
+    variables = extract_variables(req.zpl)
+    chunks: List[str] = []
+    total_labels = 0
+    for row in req.rows:
+        values: Dict[str, Any] = {}
+        for var in variables:
+            col = req.mapping.get(var)
+            values[var] = row[col] if col and col in row else ""
+        qty = 1
+        if req.quantityColumn and req.quantityColumn in row:
+            try:
+                qty = max(1, int(float(str(row[req.quantityColumn]) or "1")))
+            except (ValueError, TypeError):
+                qty = 1
+        zpl_row = substitute_variables(req.zpl, values)
+        chunks.append(zpl_row * qty)
+        total_labels += qty
+    final_zpl = "".join(chunks)
+    return Response(
+        content=final_zpl,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": "attachment; filename=lote.prn",
+            "X-Total-Labels": str(total_labels),
+        },
+    )
+
+
 # Include the router
 app.include_router(api_router)
 

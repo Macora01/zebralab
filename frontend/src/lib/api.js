@@ -124,7 +124,21 @@ export async function rawExport(zpl, substitutions, filename = "etiqueta.prn") {
     URL.revokeObjectURL(url);
 }
 
-export async function generateBatch(design, rows, mapping, quantityColumn) {
+export async function rawBatch(zpl, rows, mapping, quantityColumn, filename = "lote.prn") {
+    const res = await api.post(
+        "/raw/batch",
+        { zpl, rows, mapping, quantityColumn },
+        { responseType: "blob" }
+    );
+    const total = res.headers["x-total-labels"];
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    return total;
+}
     const res = await api.post(
         "/batch/generate",
         { design, rows, mapping, quantityColumn },
