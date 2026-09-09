@@ -139,6 +139,8 @@ export async function rawBatch(zpl, rows, mapping, quantityColumn, filename = "l
     URL.revokeObjectURL(url);
     return total;
 }
+
+export async function generateBatch(design, rows, mapping, quantityColumn) {
     const res = await api.post(
         "/batch/generate",
         { design, rows, mapping, quantityColumn },
