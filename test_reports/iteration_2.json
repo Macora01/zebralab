@@ -1,0 +1,43 @@
+{
+  "summary": "Tested ZebraLab v1.3: backend APIs (8/9 pass), frontend UI loads correctly, agent badge present showing 'Sin agente' as expected (no local agent running). Critical issue: Permissions-Policy header NOT present in HTTP response from preview URL.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET / (frontend)",
+        "issue": "Permissions-Policy: private-network-access=* header configured in nginx.conf (line 12) but NOT present in actual HTTP responses. The preview environment serves via Express + Cloudflare, not via the nginx Docker container. Chrome PNA fix will not work until deployed via Docker/nginx.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Top bar",
+        "issues": ["Minor: 'Sin agente' badge shows correctly (expected behavior when no local agent running)"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_zebralab.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Permissions-Policy header is not being served. nginx.conf is correctly configured but the preview environment uses Express (not nginx Docker). Verify the Docker deployment actually serves through nginx and the header is present in production. The fix (nginx.conf line 12) is correct but may not be active in this environment.",
+    "Verify the Docker-based deployment pipeline actually builds and uses the nginx.conf from frontend/nginx.conf"
+  ],
+  "critical_code_review_comments": [
+    "nginx.conf Permissions-Policy header is correctly placed (line 12, `always` directive), but it only takes effect in Docker nginx deployment, not in the Kubernetes preview Express server.",
+    "agent.js pingAgent() makes a plain HTTP fetch to localhost:17331 without the `targetAddressSpace: 'private'` fetch option — Chrome PNA may require this additional header. See: https://developer.chrome.com/blog/private-network-access-update/",
+    "server.py: CORSMiddleware is added AFTER include_router which is fine in FastAPI but worth noting for consistency."
+  ],
+  "updated_files": ["/app/backend/tests/test_zebralab.py"],
+  "success_rate": {"backend": "89% (8/9)", "frontend": "100%"},
+  "seed_data_creation": "Created and deleted one TEST_template_zebralab template during testing",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Main issue is Permissions-Policy header missing from HTTP responses in preview env. All backend APIs work. Frontend loads cleanly with label editor, agent badge showing 'Sin agente'. Test file at /app/backend/tests/test_zebralab.py.",
+  "rca_of_the_issue": "Root cause: frontend/nginx.conf adds `Permissions-Policy: private-network-access=*` but the Kubernetes preview environment serves the React app via an Express server (x-powered-by: Express in response headers), NOT via the nginx Docker container. So the header never reaches the browser. Fix: either ensure Docker nginx deployment is used, or add the header at the Express/ingress level."
+}
