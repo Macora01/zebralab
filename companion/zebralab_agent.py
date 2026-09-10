@@ -102,6 +102,13 @@ def send_zpl_to_printer(zpl: str, printer: str):
     """Send raw ZPL data to a CUPS printer. Returns (ok, error_message)."""
     if not zpl:
         return False, "ZPL vacío"
+
+    # Strip any preamble before ^XA (e.g. "CT~~CD,~CC^~CT~") that
+    # some PRN exporters add and that can confuse macOS CUPS.
+    xa_idx = zpl.find("^XA")
+    if xa_idx > 0:
+        zpl = zpl[xa_idx:]
+
     encoded = zpl.encode("latin-1", errors="replace")
     with tempfile.NamedTemporaryFile(
         mode="wb", suffix=".zpl", delete=False
@@ -112,7 +119,10 @@ def send_zpl_to_printer(zpl: str, printer: str):
     os.chmod(path, 0o644)
     try:
         result = subprocess.run(
-            ["lp", "-d", printer, "-o", "raw", path],
+            ["lp", "-d", printer,
+             "-o", "raw",
+             "-o", "document-format=application/vnd.cups-raw",
+             path],
             capture_output=True,
             text=True,
             timeout=15,
