@@ -1,56 +1,78 @@
-# ZebraLab — Diseñador visual de etiquetas Zebra ZD220
+# ZebraLab — PRD
 
-## Problem statement (original, ES)
-Usuario tiene impresora Zebra ZD220. ZebraDesigner Essentials solo corre en Windows.
-Trabaja en Mac. Tiene un script Python (Tkinter) que toma archivos .prn (ZPL) y los
-imprime via CUPS (`lp -d Zebra_... -o raw`). Quiere una app web/desktop para diseñar
-visualmente esos .prn desde Mac.
+## Descripción
+Aplicación web para diseñar etiquetas Zebra ZPL visualmente y enviarlas a imprimir desde Mac, sin depender de ZebraDesigner (solo disponible en Windows).
 
-Marca: BoaIdeia (tienda). Paleta marrón. Etiquetas pequeñas (50x30mm y 50x100mm).
-Tipo: Web app primero, desktop después. Posible monetización futura.
+- **Marca:** BoaIdeia
+- **Stack:** FastAPI + MongoDB + React
+- **Impresora:** Zebra ZD220 (203 dpi)
+- **Repositorio:** https://github.com/Macora01/zebralab.git
+- **VPS:** https://zebra.facore.cl
 
-## Architecture
-- Backend: FastAPI + MongoDB (motor)
-  - `zpl_generator.py`: convierte design JSON → ZPL II (203 dpi, 8 dots/mm)
-  - Endpoints: /api/zpl/{generate,export,preview}, /api/templates CRUD, /api/batch/{parse,generate}
-  - Preview via Labelary public API (http://api.labelary.com)
-- Frontend: React (CRA + craco), Tailwind, @phosphor-icons/react
-  - 3-panel layout: Tools sidebar | Canvas | Properties panel
-  - Drag-and-drop con divs absolutely positioned (sin Konva)
-  - Modals: Plantillas, Lote CSV, Vista previa
-- Companion script (Mac): `/app/companion/zebralab_print.py` — imprime .prn vía `lp`, soporta clipboard y watch-folder
+---
 
-## Core requirements (estado)
-- [x] Editor visual canvas (mm)
-- [x] Tamaños predefinidos: 50x30, 50x100, 100x50, custom
-- [x] Texto (fuentes ZPL A/B/D/F/0, tamaño en mm, rotación 0/90/180/270)
-- [x] Códigos de barras: QR, Code128, EAN13, EAN8, Code39, UPC-A
-- [x] Rectángulos, líneas
-- [x] Campos variables {variable_name} (compatible con script Python existente)
-- [x] Plantillas: guardar/cargar/duplicar/eliminar (Mongo)
-- [x] Lote CSV/Excel: parseo, auto-mapeo por nombre de columna, columna cantidad, descarga .prn
-- [x] Vista previa real vía Labelary
-- [x] Exportar .prn descargable
-- [x] Preservación de placeholders {var} en ZPL (interop con script original)
-- [x] Special case "precio" -> "$ valor" (replicado del script original)
-- [ ] App de escritorio Mac (pendiente - fase 2)
-- [ ] Imágenes/logos en el editor (deferred - fase 2)
-- [ ] Multi-usuario, autenticación, planes Stripe (fase 4)
+## Versiones
 
-## Implemented (history)
-- 2026-01-19: MVP completo (backend + frontend + companion script)
-  - Backend: 12/12 pytest pasados
-  - Frontend: validado por testing agent (todos los flujos)
-  - Patch en craco.config.js para compatibilidad webpack-dev-server v5 vs react-scripts 5
+| Versión | Cambios |
+|---|---|
+| 1.0 | MVP: editor visual, plantillas, exportar .prn, vista previa Labelary |
+| 1.1 | Lote CSV/XLSX para diseños visuales, agente local de impresión |
+| 1.2 | Lote CSV/XLSX para plantillas .prn importadas, fix CORS agente VPS |
+| 1.3 | Fix `agentInfo is not defined` en BatchModal (blank page al subir XLSX) |
 
-## Backlog (próximas fases)
-- P1: Empaquetado como app de escritorio (Tauri o Electron)
-- P1: Soporte de imágenes/logos (conversión a ^GFA)
-- P1: Botón "Imprimir directo" en la web que envía a un endpoint local del companion script
-- P2: Multi-workspace, autenticación, planes Stripe (monetización)
-- P2: Historial de impresión / logs
-- P2: Importar plantillas .prn existentes (parseando ZPL → design JSON)
-- P3: Catálogo de plantillas pre-hechas para distintos rubros
+---
 
-## Test credentials
-N/A (single-user, sin auth en MVP)
+## Arquitectura
+
+- **Frontend:** React 19 (CRA + Craco), Tailwind CSS, @phosphor-icons
+- **Backend:** FastAPI + Motor (MongoDB async) + Pandas + Pillow + Requests (Labelary)
+- **Agente local:** Python puro (sin deps), HTTP server en localhost:17331, usa CUPS/lp
+
+---
+
+## Funcionalidades implementadas
+
+### Editor visual
+- Canvas drag & drop (mm)
+- Elementos: texto estático, texto variable `{nombre}`, códigos de barras (QR/Code128/EAN13/EAN8/Code39/UPC-A), rectángulo, línea, imagen (→ ZPL ^GFA)
+- Zoom, capas, multi-up (grilla N×M)
+- Panel de propiedades por elemento
+
+### Plantillas
+- Guardar / actualizar / duplicar / eliminar
+- Importar archivos .prn existentes (almacena rawZpl)
+- CRUD en MongoDB
+
+### Impresión
+- Exportar .prn descargable
+- Vista previa real via Labelary
+- Impresión directa via agente local
+
+### Lote CSV/XLSX
+- Para diseños visuales: BatchModal (barra superior)
+- Para plantillas .prn importadas: RawTemplateModal → tab "Lote CSV/XLSX"
+- Auto-mapeo de variables, columna cantidad, vista previa primera etiqueta
+
+### Agente local (Mac)
+- zebralab_agent.py: HTTP server en localhost:17331
+- CORS configurado para VPS HTTPS (Access-Control-Allow-Private-Network: true)
+- Endpoints: /health, /printers, /print
+- Descargable desde la app
+
+---
+
+## Backlog pendiente
+
+| Prioridad | Feature |
+|---|---|
+| P1 | Confirmar fix agente en VPS (CORS Private Network Access) |
+| P2 | App de escritorio Mac (Tauri o Electron) |
+| P2 | Multi-usuario con autenticación |
+| P2 | Historial de impresión / logs |
+| P3 | Monetización con Stripe |
+| P3 | Catálogo de plantillas pre-hechas |
+
+---
+
+## Credenciales de prueba
+N/A — sin autenticación en MVP
