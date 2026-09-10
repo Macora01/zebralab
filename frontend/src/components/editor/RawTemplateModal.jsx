@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
     X, Printer, DownloadSimple, Eye, ArrowsClockwise,
     Warning, CheckCircle, FileText, UploadSimple, Stack,
@@ -78,15 +78,17 @@ function SingleTab({ template, agentInfo, onClose }) {
     const [success, setSuccess] = useState("");
 
     useEffect(() => {
-        if (!template) return;
+        if (!template?.rawZpl) return;
         setError(""); setSuccess(""); setCopies(1);
-        rawVariables(template.rawZpl).then((vars) => {
-            setVariables(vars);
-            const init = {};
-            vars.forEach((v) => { init[v] = ""; });
-            setSubstitutions(init);
-            refreshPreview(init);
-        });
+        rawVariables(template.rawZpl)
+            .then((vars) => {
+                setVariables(vars);
+                const init = {};
+                vars.forEach((v) => { init[v] = ""; });
+                setSubstitutions(init);
+                refreshPreview(init);
+            })
+            .catch(() => setError("No se pudieron cargar las variables del archivo .prn"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [template]);
 
@@ -216,8 +218,10 @@ function BatchTab({ template, agentInfo }) {
 
     // Detect variables from PRN on mount
     useEffect(() => {
-        if (!template) return;
-        rawVariables(template.rawZpl).then(setVariables);
+        if (!template?.rawZpl) return;
+        rawVariables(template.rawZpl)
+            .then(setVariables)
+            .catch(() => setVariables([]));
     }, [template]);
 
     // Auto-map when parsed changes
@@ -247,7 +251,7 @@ function BatchTab({ template, agentInfo }) {
         } finally { setBusy(false); }
     }
 
-    const totalLabels = (() => {
+    const totalLabels = useMemo(() => {
         if (!parsed) return 0;
         if (!quantityColumn) return parsed.total;
         let s = 0;
@@ -256,7 +260,7 @@ function BatchTab({ template, agentInfo }) {
             s += Number.isFinite(v) && v > 0 ? v : 1;
         }
         return s;
-    })();
+    }, [parsed, quantityColumn]);
 
     async function handlePreview() {
         if (!parsed || parsed.rows.length === 0) return;
@@ -411,7 +415,7 @@ function BatchTab({ template, agentInfo }) {
                                     <tbody>
                                         {parsed.rows.slice(0, 5).map((row, i) => (
                                             <tr key={i} className="border-t border-brand-200">
-                                                {parsed.columns.map((c) => <td key={c} className="px-2 py-1 border-r border-brand-200 last:border-r-0 text-brand-950">{row[c]}</td>)}
+                                                {parsed.columns.map((c) => <td key={c} className="px-2 py-1 border-r border-brand-200 last:border-r-0 text-brand-950">{String(row[c] ?? "")}</td>)}
                                             </tr>
                                         ))}
                                     </tbody>
