@@ -203,6 +203,9 @@ class AgentHandler(BaseHTTPRequestHandler):
         except (TypeError, ValueError):
             copies = 1
 
+        # Debug log
+        sys.stderr.write(f"[ZebraLab] Print → impresora: {printer} | copies: {copies} | ZPL ({len(zpl)} chars): {zpl[:120].replace(chr(10),' ')}...\n")
+
         if not zpl or "^XA" not in zpl:
             self._json(400, {"error": "ZPL inválido (debe contener ^XA)"})
             return
