@@ -102,13 +102,14 @@ def send_zpl_to_printer(zpl: str, printer: str):
     """Send raw ZPL data to a CUPS printer. Returns (ok, error_message)."""
     if not zpl:
         return False, "ZPL vacío"
-    # Write as binary (latin-1 preserves byte values) — Zebra needs raw bytes
     encoded = zpl.encode("latin-1", errors="replace")
     with tempfile.NamedTemporaryFile(
         mode="wb", suffix=".zpl", delete=False
     ) as f:
         f.write(encoded)
         path = f.name
+    # CUPS runs as _cups user — needs read access to the temp file
+    os.chmod(path, 0o644)
     try:
         result = subprocess.run(
             ["lp", "-d", printer, "-o", "raw", path],
