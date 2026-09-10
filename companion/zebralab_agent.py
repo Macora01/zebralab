@@ -102,10 +102,12 @@ def send_zpl_to_printer(zpl: str, printer: str):
     """Send raw ZPL data to a CUPS printer. Returns (ok, error_message)."""
     if not zpl:
         return False, "ZPL vacío"
+    # Write as binary (latin-1 preserves byte values) — Zebra needs raw bytes
+    encoded = zpl.encode("latin-1", errors="replace")
     with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".zpl", delete=False, encoding="utf-8"
+        mode="wb", suffix=".zpl", delete=False
     ) as f:
-        f.write(zpl)
+        f.write(encoded)
         path = f.name
     try:
         result = subprocess.run(
@@ -114,6 +116,7 @@ def send_zpl_to_printer(zpl: str, printer: str):
             text=True,
             timeout=15,
         )
+        sys.stderr.write(f"[ZebraLab] lp returncode={result.returncode} stdout={result.stdout.strip()} stderr={result.stderr.strip()}\n")
         if result.returncode != 0:
             return False, (result.stderr or result.stdout).strip()
         return True, result.stdout.strip()
