@@ -6,7 +6,7 @@ import { printZplDirect, getAgentConfig } from "@/lib/agent";
 /**
  * Batch import + variable mapping + preview + .prn generation.
  */
-export default function BatchModal({ open, onClose, design, variables }) {
+export default function BatchModal({ open, onClose, design, variables, agentInfo }) {
     const [file, setFile] = useState(null);
     const [parsed, setParsed] = useState(null); // { columns, rows, total }
     const [mapping, setMapping] = useState({}); // { variable -> column }
