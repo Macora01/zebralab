@@ -151,7 +151,7 @@ function App() {
                                 ZebraLab
                             </h1>
                             <p className="text-[10px] text-brand-700 leading-none mt-0.5 font-mono uppercase tracking-widest">
-                                by BoaIdeia
+                                by BoaIdeia · <span className="text-brand-500">v1.2</span>
                             </p>
                         </div>
                     </div>

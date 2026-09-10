@@ -19,6 +19,7 @@ from zpl_generator import (
     substitute_variables,
     extract_variables,
 )
+from version import APP_VERSION
 
 
 ROOT_DIR = Path(__file__).parent
@@ -117,7 +118,7 @@ def _now_iso() -> str:
 # -------------------- Routes --------------------
 @api_router.get("/")
 async def root():
-    return {"message": "ZebraLab API", "version": "1.0.0"}
+    return {"message": "ZebraLab API", "version": APP_VERSION}
 
 
 @api_router.get("/agent/download")
