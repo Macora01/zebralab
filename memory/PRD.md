@@ -19,6 +19,7 @@ Aplicación web para diseñar etiquetas Zebra ZPL visualmente y enviarlas a impr
 | 1.1 | Lote CSV/XLSX para diseños visuales, agente local de impresión |
 | 1.2 | Lote CSV/XLSX para plantillas .prn importadas, fix CORS agente VPS |
 | 1.3 | Fix `agentInfo is not defined` en BatchModal (blank page al subir XLSX) |
+| 1.4 | Fix cantidad exacta multi-up (quantity param en generate_zpl), fix Chrome/Safari PNA (Origin dinámico en agente), migración imágenes a Emergent Object Storage |
 
 ---
 
@@ -65,12 +66,22 @@ Aplicación web para diseñar etiquetas Zebra ZPL visualmente y enviarlas a impr
 
 | Prioridad | Feature |
 |---|---|
-| P1 | Confirmar fix agente en VPS (CORS Private Network Access) |
+| P1 | Confirmar fix Chrome/Safari en VPS del usuario (ver instrucciones de deploy) |
+| P1 | Agregar EMERGENT_LLM_KEY en Coolify para activar subida de imágenes |
 | P2 | App de escritorio Mac (Tauri o Electron) |
 | P2 | Multi-usuario con autenticación |
 | P2 | Historial de impresión / logs |
 | P3 | Monetización con Stripe |
 | P3 | Catálogo de plantillas pre-hechas |
+
+---
+
+## Deploy en Coolify — variables de entorno requeridas
+
+Agregar en la configuración de entorno del contenedor backend:
+- `EMERGENT_LLM_KEY=sk-emergent-...` (obtener desde Emergent Dashboard → Profile → Universal Key)
+
+Esto activa la subida de imágenes/logos al Object Storage. Sin esta variable, la app funciona normalmente excepto la función "Imagen/Logo".
 
 ---
 

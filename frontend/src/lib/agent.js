@@ -40,9 +40,7 @@ export async function pingAgent() {
         const timeout = setTimeout(() => ctrl.abort(), 4000);
         const res = await fetch(agentUrl("/health"), {
             signal: ctrl.signal,
-            // Chrome 130+: declare this request targets a private network (localhost)
-            // so Chrome sends the correct PNA preflight headers.
-            ...(typeof window !== "undefined" && { targetAddressSpace: "private" }),
+            mode: "cors",
         });
         clearTimeout(timeout);
         if (!res.ok) return null;

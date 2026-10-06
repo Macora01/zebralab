@@ -148,12 +148,20 @@ class AgentHandler(BaseHTTPRequestHandler):
 
     # ---------- helpers ----------
     def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # Echo back the exact Origin header to satisfy Chrome/Safari
+        # Private Network Access (PNA) requirements. Chrome 104+ requires
+        # an explicit origin (not *) in the preflight response when accessing
+        # localhost from an HTTPS page.
+        origin = self.headers.get("Origin", "")
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        else:
+            self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Access-Control-Request-Private-Network")
-        # Private Network Access (Chrome 104+): explicitly allow requests
-        # from public HTTPS origins (e.g. https://zebra.facore.cl) to
-        # http://localhost. Without this, modern Chrome blocks the call.
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        # Private Network Access: required by Chrome/Safari when an HTTPS page
+        # accesses HTTP localhost. Without this, modern browsers block the call.
         self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Access-Control-Max-Age", "86400")
 

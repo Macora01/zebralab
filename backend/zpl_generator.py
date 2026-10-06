@@ -6,14 +6,12 @@ Coordinates:
 - ZPL uses dots. At 203 dpi (Zebra ZD220), 1 mm = 8 dots.
 """
 from typing import List, Dict, Any, Optional
-from pathlib import Path
+import io
 import re
 from PIL import Image
 
 DPI = 203
 DOTS_PER_MM = DPI / 25.4  # ~8.0
-UPLOADS_DIR = Path(__file__).parent / "uploads"
-UPLOADS_DIR.mkdir(exist_ok=True)
 
 
 def mm_to_dots(mm: float) -> int:
@@ -114,7 +112,9 @@ def generate_element_zpl(el: Dict[str, Any]) -> str:
             return ""
         width_mm = float(el.get("width", 20))
         threshold = int(el.get("threshold", 128))
-        gfa = image_to_zpl_gfa(image_id, width_mm, threshold)
+        image_cache: Dict[str, bytes] = el.get("_image_cache") or {}
+        img_bytes = image_cache.get(image_id)
+        gfa = image_to_zpl_gfa(img_bytes, width_mm, threshold)
         if not gfa:
             return ""
         return f"^FO{x},{y}{gfa}^FS"
@@ -122,19 +122,16 @@ def generate_element_zpl(el: Dict[str, Any]) -> str:
     return ""
 
 
-def image_to_zpl_gfa(image_id: str, width_mm: float, threshold: int = 128) -> str:
-    """Convert a stored image to a ZPL ^GFA graphic field command.
+def image_to_zpl_gfa(img_bytes: bytes, width_mm: float, threshold: int = 128) -> str:
+    """Convert raw image bytes to a ZPL ^GFA graphic field command.
 
     Returns the ^GFA,... string (without ^FO prefix or ^FS suffix), or empty.
     """
-    safe_id = re.sub(r"[^A-Za-z0-9_\-]", "", image_id)
-    candidates = list(UPLOADS_DIR.glob(f"{safe_id}.*"))
-    if not candidates:
+    if not img_bytes:
         return ""
-    src_path = candidates[0]
     try:
-        img = Image.open(src_path)
-    except (FileNotFoundError, OSError):
+        img = Image.open(io.BytesIO(img_bytes))
+    except (OSError, Exception):
         return ""
 
     target_w_dots = max(8, mm_to_dots(width_mm))
@@ -165,7 +162,7 @@ def image_to_zpl_gfa(image_id: str, width_mm: float, threshold: int = 128) -> st
     return f"^GFA,{total_bytes},{total_bytes},{bytes_per_row},{hex_data}"
 
 
-def generate_zpl(design: Dict[str, Any]) -> str:
+def generate_zpl(design: Dict[str, Any], quantity: Optional[int] = None, image_cache: Optional[Dict[str, bytes]] = None) -> str:
     """Generate full ZPL from a design definition.
 
     design = {
@@ -179,6 +176,10 @@ def generate_zpl(design: Dict[str, Any]) -> str:
         },
         "elements": [ ... ]
     }
+
+    quantity: if provided, only fill the first N cells (leave the rest blank).
+              Useful for exact-quantity printing on multi-up rolls.
+    image_cache: dict of imageId -> raw bytes for images in the design.
     """
     cell_w = float(design.get("widthMm", 50))
     cell_h = float(design.get("heightMm", 30))
@@ -214,16 +215,23 @@ def generate_zpl(design: Dict[str, Any]) -> str:
     lines.append(f"^LL{ll}")
 
     elements = design.get("elements", [])
+    img_cache = image_cache or {}
 
     # Duplicate elements across the grid (same content per cell)
     for r in range(rows):
         for c in range(cols):
+            cell_index = r * cols + c
+            # Skip drawing elements for cells beyond the requested quantity
+            if quantity is not None and cell_index >= quantity:
+                continue  # Leave this cell blank
             ox_mm = c * (cell_w + gap_x)
             oy_mm = r * (cell_h + gap_y)
             for el in elements:
                 shifted = dict(el)
                 shifted["x"] = float(el.get("x", 0)) + ox_mm
                 shifted["y"] = float(el.get("y", 0)) + oy_mm
+                # Attach image cache via element dict (picked up in generate_element_zpl)
+                shifted["_image_cache"] = img_cache
                 zpl_el = generate_element_zpl(shifted)
                 if zpl_el:
                     lines.append(zpl_el)
