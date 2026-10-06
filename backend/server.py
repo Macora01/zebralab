@@ -551,8 +551,17 @@ class RawBatchRequest(BaseModel):
 
 @api_router.post("/raw/batch")
 async def raw_batch(req: RawBatchRequest):
-    """Generate a single .prn from a raw ZPL template + CSV rows."""
+    """Generate a single .prn from a raw ZPL template + CSV rows.
+    Handles multi-block templates (e.g. 2-up ZebraDesigner exports) by packing
+    exactly `qty` individual label blocks per row instead of repeating the full template.
+    """
+    import re as _re
     variables = extract_variables(req.zpl)
+
+    # Detect how many ^XA...^XZ blocks the template contains
+    template_blocks = _re.findall(r'\^XA[\s\S]*?\^XZ', req.zpl, _re.IGNORECASE)
+    labels_per_strip = len(template_blocks) if len(template_blocks) > 1 else 1
+
     chunks: List[str] = []
     total_labels = 0
     for row in req.rows:
@@ -567,8 +576,21 @@ async def raw_batch(req: RawBatchRequest):
             except (ValueError, TypeError):
                 qty = 1
         zpl_row = substitute_variables(req.zpl, values)
-        chunks.append(zpl_row * qty)
+
+        if labels_per_strip > 1:
+            # Multi-block template: extract substituted blocks and build exactly `qty` labels
+            subst_blocks = _re.findall(r'\^XA[\s\S]*?\^XZ', zpl_row, _re.IGNORECASE)
+            remaining = qty
+            while remaining >= labels_per_strip:
+                chunks.append("".join(subst_blocks))
+                remaining -= labels_per_strip
+            if remaining > 0:
+                chunks.append("".join(subst_blocks[:remaining]))
+        else:
+            chunks.append(zpl_row * qty)
+
         total_labels += qty
+
     final_zpl = "".join(chunks)
     return Response(
         content=final_zpl,

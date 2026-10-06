@@ -121,9 +121,40 @@ function SingleTab({ template, agentInfo, onClose }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ zpl: template.rawZpl, substitutions }),
             });
-            const zpl = await res.text();
+            const rawZpl = await res.text();
+
+            // Split into individual label blocks (^XA...^XZ).
+            // ZebraDesigner often exports 2-up templates as 2 separate blocks.
+            // We re-assemble exactly `copies` blocks so the printer gets the
+            // correct number of physical labels regardless of the template layout.
+            const blocks = rawZpl.match(/\^XA[\s\S]*?\^XZ/gi) || [rawZpl];
+            const labelsPerBlock = blocks.length; // 1 for single-up, 2 for 2-up, etc.
+
+            let finalZpl;
+            if (labelsPerBlock > 1) {
+                // Multi-block template: build exactly `copies` individual label blocks
+                const parts = [];
+                let remaining = copies;
+                while (remaining >= labelsPerBlock) {
+                    parts.push(blocks.join(""));
+                    remaining -= labelsPerBlock;
+                }
+                if (remaining > 0) {
+                    parts.push(blocks.slice(0, remaining).join(""));
+                }
+                finalZpl = parts.join("");
+            } else {
+                // Single block (possibly true 2-up layout baked in): use copies directly
+                finalZpl = rawZpl;
+            }
+
             const cfg = getAgentConfig();
-            await printZplDirect({ zpl, printer: cfg.printer || agentInfo?.default_printer, copies });
+            await printZplDirect({
+                zpl: finalZpl,
+                printer: cfg.printer || agentInfo?.default_printer,
+                // For multi-block: quantity is already encoded in finalZpl
+                copies: labelsPerBlock > 1 ? 1 : copies,
+            });
             setSuccess(`✓ Enviado a la impresora (${copies} ${copies === 1 ? "etiqueta" : "etiquetas"})`);
         } catch (e) { setError(e?.message || "Error al imprimir"); }
         finally { setBusy(false); }
@@ -294,7 +325,6 @@ function BatchTab({ template, agentInfo }) {
         if (!agentInfo) { setError("No hay agente local activo."); return; }
         setBusy(true); setError(""); setSuccess("");
         try {
-            // Build combined ZPL client-side for agent
             let combinedZpl = "";
             let printed = 0;
             for (const row of parsed.rows) {
@@ -305,14 +335,29 @@ function BatchTab({ template, agentInfo }) {
                     const q = parseInt(String(row[quantityColumn]), 10);
                     if (Number.isFinite(q) && q > 0) qty = q;
                 }
-                // substitute via backend
                 const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/raw/export`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ zpl: template.rawZpl, substitutions: subs }),
                 });
-                const zpl = await res.text();
-                combinedZpl += zpl.repeat(qty);
+                const rawZpl = await res.text();
+
+                // Split into individual blocks and rebuild exactly `qty` labels
+                const blocks = rawZpl.match(/\^XA[\s\S]*?\^XZ/gi) || [rawZpl];
+                const labelsPerBlock = blocks.length;
+
+                if (labelsPerBlock > 1) {
+                    let remaining = qty;
+                    while (remaining >= labelsPerBlock) {
+                        combinedZpl += blocks.join("");
+                        remaining -= labelsPerBlock;
+                    }
+                    if (remaining > 0) {
+                        combinedZpl += blocks.slice(0, remaining).join("");
+                    }
+                } else {
+                    for (let i = 0; i < qty; i++) combinedZpl += rawZpl;
+                }
                 printed += qty;
             }
             const cfg = getAgentConfig();
