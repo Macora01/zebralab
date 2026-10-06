@@ -7,8 +7,8 @@ export const api = axios.create({
     baseURL: API,
 });
 
-export async function generateZpl(design, substitutions = null, quantity = null) {
-    const { data } = await api.post("/zpl/generate", { design, substitutions, quantity });
+export async function generateZpl(design, substitutions = null) {
+    const { data } = await api.post("/zpl/generate", { design, substitutions });
     return data; // { zpl, variables }
 }
 

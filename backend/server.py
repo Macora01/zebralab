@@ -19,7 +19,6 @@ from zpl_generator import (
     substitute_variables,
     extract_variables,
 )
-from storage import init_storage, put_object, get_object, MIME_TYPES, APP_NAME
 from version import APP_VERSION
 
 
@@ -32,12 +31,6 @@ db = client[os.environ['DB_NAME']]
 
 app = FastAPI(title="ZebraLab API")
 api_router = APIRouter(prefix="/api")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 
 # -------------------- Models --------------------
@@ -115,7 +108,6 @@ class Template(BaseModel):
 class GenerateRequest(BaseModel):
     design: Design
     substitutions: Optional[Dict[str, Any]] = None
-    quantity: Optional[int] = None  # exact label count (for multi-up exact printing)
 
 
 # -------------------- Helpers --------------------
@@ -144,25 +136,9 @@ async def download_agent():
 
 
 # ----- Image upload (for logo / images in labels) -----
+UPLOADS_DIR = ROOT_DIR / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
 ALLOWED_IMG_EXT = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
-
-
-async def _build_image_cache(design_dict: dict) -> Dict[str, bytes]:
-    """Pre-download all image bytes needed for ZPL generation from object storage."""
-    image_ids = set()
-    for el in design_dict.get("elements", []):
-        if el.get("type") == "image" and el.get("imageId"):
-            image_ids.add(el["imageId"])
-    cache: Dict[str, bytes] = {}
-    for img_id in image_ids:
-        doc = await db.images.find_one({"id": img_id, "is_deleted": False})
-        if doc and doc.get("storage_path"):
-            try:
-                img_bytes, _ = get_object(doc["storage_path"])
-                cache[img_id] = img_bytes
-            except Exception as e:
-                logger.warning(f"Could not load image {img_id}: {e}")
-    return cache
 
 
 @api_router.post("/image/upload")
@@ -172,30 +148,16 @@ async def upload_image(file: UploadFile = File(...)):
     ext = next((e for e in ALLOWED_IMG_EXT if name.endswith(e)), None)
     if not ext:
         raise HTTPException(status_code=400, detail="Formato no soportado (PNG, JPG, GIF, BMP, WEBP)")
+    image_id = uuid.uuid4().hex
+    target = UPLOADS_DIR / f"{image_id}{ext}"
     content = await file.read()
+    target.write_bytes(content)
     try:
-        with PILImage.open(io.BytesIO(content)) as img:
+        with PILImage.open(target) as img:
             w, h = img.size
     except Exception as e:
+        target.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=f"Imagen inválida: {e}")
-    image_id = uuid.uuid4().hex
-    mime = MIME_TYPES.get(ext.lstrip("."), "image/png")
-    storage_path = f"{APP_NAME}/images/{image_id}{ext}"
-    try:
-        result = put_object(storage_path, content, mime)
-        storage_path = result["path"]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al subir imagen: {e}")
-    await db.images.insert_one({
-        "id": image_id,
-        "storage_path": storage_path,
-        "content_type": mime,
-        "ext": ext,
-        "width": w,
-        "height": h,
-        "is_deleted": False,
-        "createdAt": _now_iso(),
-    })
     return {"id": image_id, "width": w, "height": h, "ext": ext}
 
 
@@ -203,15 +165,12 @@ async def upload_image(file: UploadFile = File(...)):
 async def get_thumbnail(image_id: str):
     from PIL import Image as PILImage
     safe = "".join(c for c in image_id if c.isalnum())
-    doc = await db.images.find_one({"id": safe, "is_deleted": False})
-    if not doc or not doc.get("storage_path"):
+    candidates = list(UPLOADS_DIR.glob(f"{safe}.*"))
+    if not candidates:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
-    try:
-        img_bytes, _ = get_object(doc["storage_path"])
-    except Exception:
-        raise HTTPException(status_code=404, detail="Imagen no disponible")
+    img_path = candidates[0]
     buf = io.BytesIO()
-    with PILImage.open(io.BytesIO(img_bytes)) as img:
+    with PILImage.open(img_path) as img:
         img.thumbnail((400, 400))
         img.convert("RGB").save(buf, format="PNG")
     return Response(content=buf.getvalue(), media_type="image/png")
@@ -222,8 +181,7 @@ async def get_thumbnail(image_id: str):
 async def zpl_generate(req: GenerateRequest):
     """Generate ZPL from a design. Optionally substitute variables."""
     design_dict = req.design.model_dump()
-    img_cache = await _build_image_cache(design_dict)
-    zpl = generate_zpl(design_dict, quantity=req.quantity, image_cache=img_cache)
+    zpl = generate_zpl(design_dict)
     if req.substitutions:
         zpl = substitute_variables(zpl, req.substitutions)
     variables = extract_variables(zpl)
@@ -234,8 +192,7 @@ async def zpl_generate(req: GenerateRequest):
 async def zpl_export(req: GenerateRequest):
     """Return ZPL as a downloadable .prn file."""
     design_dict = req.design.model_dump()
-    img_cache = await _build_image_cache(design_dict)
-    zpl = generate_zpl(design_dict, quantity=req.quantity, image_cache=img_cache)
+    zpl = generate_zpl(design_dict)
     if req.substitutions:
         zpl = substitute_variables(zpl, req.substitutions)
     return Response(
@@ -249,8 +206,7 @@ async def zpl_export(req: GenerateRequest):
 async def zpl_preview(req: GenerateRequest):
     """Render ZPL to a PNG image via Labelary public API."""
     design_dict = req.design.model_dump()
-    img_cache = await _build_image_cache(design_dict)
-    zpl = generate_zpl(design_dict, quantity=req.quantity, image_cache=img_cache)
+    zpl = generate_zpl(design_dict)
     if req.substitutions:
         zpl = substitute_variables(zpl, req.substitutions)
     # Also fill any leftover placeholders with their name in brackets for visual debugging
@@ -485,14 +441,9 @@ class BatchGenerateRequest(BaseModel):
 
 @api_router.post("/batch/generate")
 async def batch_generate(req: BatchGenerateRequest):
-    """Generate a single .prn with all rows concatenated.
-    Multi-up layouts are packed efficiently: exact quantity of labels,
-    with blank cells for the last partial strip if qty % cols != 0.
-    """
+    """Generate a single .prn with all rows concatenated (each multiplied by quantity)."""
     design_dict = req.design.model_dump()
-    cols = max(1, design_dict.get("layout", {}).get("columns", 1))
-    img_cache = await _build_image_cache(design_dict)
-    base_zpl = generate_zpl(design_dict, image_cache=img_cache)
+    base_zpl = generate_zpl(design_dict)
     variables = extract_variables(base_zpl)
 
     chunks: List[str] = []
@@ -512,22 +463,8 @@ async def batch_generate(req: BatchGenerateRequest):
                 qty = max(1, int(float(str(row[req.quantityColumn]) or "1")))
             except (ValueError, TypeError):
                 qty = 1
-
         zpl_row = substitute_variables(base_zpl, values)
-
-        # Pack into multi-up strips: full strips + optional partial strip
-        full_strips = qty // cols
-        remainder = qty % cols
-
-        for _ in range(full_strips):
-            chunks.append(zpl_row)
-
-        if remainder > 0:
-            # Partial strip: only `remainder` cells filled, rest blank
-            partial_base = generate_zpl(design_dict, quantity=remainder, image_cache=img_cache)
-            partial_zpl = substitute_variables(partial_base, values)
-            chunks.append(partial_zpl)
-
+        chunks.append(zpl_row * qty)
         total_labels += qty
 
     final_zpl = "".join(chunks)
@@ -551,17 +488,8 @@ class RawBatchRequest(BaseModel):
 
 @api_router.post("/raw/batch")
 async def raw_batch(req: RawBatchRequest):
-    """Generate a single .prn from a raw ZPL template + CSV rows.
-    Handles multi-block templates (e.g. 2-up ZebraDesigner exports) by packing
-    exactly `qty` individual label blocks per row instead of repeating the full template.
-    """
-    import re as _re
+    """Generate a single .prn from a raw ZPL template + CSV rows."""
     variables = extract_variables(req.zpl)
-
-    # Detect how many ^XA...^XZ blocks the template contains
-    template_blocks = _re.findall(r'\^XA[\s\S]*?\^XZ', req.zpl, _re.IGNORECASE)
-    labels_per_strip = len(template_blocks) if len(template_blocks) > 1 else 1
-
     chunks: List[str] = []
     total_labels = 0
     for row in req.rows:
@@ -576,21 +504,8 @@ async def raw_batch(req: RawBatchRequest):
             except (ValueError, TypeError):
                 qty = 1
         zpl_row = substitute_variables(req.zpl, values)
-
-        if labels_per_strip > 1:
-            # Multi-block template: extract substituted blocks and build exactly `qty` labels
-            subst_blocks = _re.findall(r'\^XA[\s\S]*?\^XZ', zpl_row, _re.IGNORECASE)
-            remaining = qty
-            while remaining >= labels_per_strip:
-                chunks.append("".join(subst_blocks))
-                remaining -= labels_per_strip
-            if remaining > 0:
-                chunks.append("".join(subst_blocks[:remaining]))
-        else:
-            chunks.append(zpl_row * qty)
-
+        chunks.append(zpl_row * qty)
         total_labels += qty
-
     final_zpl = "".join(chunks)
     return Response(
         content=final_zpl,
@@ -613,14 +528,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-async def startup_event():
-    try:
-        init_storage()
-        logger.info("Emergent Object Storage inicializado correctamente")
-    except Exception as e:
-        logger.warning(f"Object Storage no disponible (imágenes desactivadas): {e}")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 @app.on_event("shutdown")

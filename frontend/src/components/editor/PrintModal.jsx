@@ -32,13 +32,12 @@ export default function PrintModal({ open, onClose, design, variables, agentInfo
         setError("");
         setSuccess("");
         try {
-            // Generate ZPL with exact quantity baked in (handles multi-up blank cells)
-            const { zpl } = await generateZpl(design, substitutions, copies);
+            const { zpl } = await generateZpl(design, substitutions);
             const cfg = getAgentConfig();
             await printZplDirect({
                 zpl,
                 printer: cfg.printer || agentInfo?.default_printer,
-                copies: 1,  // quantity already encoded in ZPL strips
+                copies,
             });
             setSuccess(`✓ Enviado a la impresora (${copies} ${copies === 1 ? "etiqueta" : "etiquetas"})`);
         } catch (e) {

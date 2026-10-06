@@ -102,32 +102,18 @@ def send_zpl_to_printer(zpl: str, printer: str):
     """Send raw ZPL data to a CUPS printer. Returns (ok, error_message)."""
     if not zpl:
         return False, "ZPL vacío"
-
-    # Strip any preamble before ^XA (e.g. "CT~~CD,~CC^~CT~") that
-    # some PRN exporters add and that can confuse macOS CUPS.
-    xa_idx = zpl.find("^XA")
-    if xa_idx > 0:
-        zpl = zpl[xa_idx:]
-
-    encoded = zpl.encode("latin-1", errors="replace")
     with tempfile.NamedTemporaryFile(
-        mode="wb", suffix=".zpl", delete=False
+        mode="w", suffix=".zpl", delete=False, encoding="utf-8"
     ) as f:
-        f.write(encoded)
+        f.write(zpl)
         path = f.name
-    # CUPS runs as _cups user — needs read access to the temp file
-    os.chmod(path, 0o644)
     try:
         result = subprocess.run(
-            ["lp", "-d", printer,
-             "-o", "raw",
-             "-o", "document-format=application/vnd.cups-raw",
-             path],
+            ["lp", "-d", printer, "-o", "raw", path],
             capture_output=True,
             text=True,
             timeout=15,
         )
-        sys.stderr.write(f"[ZebraLab] lp returncode={result.returncode} stdout={result.stdout.strip()} stderr={result.stderr.strip()}\n")
         if result.returncode != 0:
             return False, (result.stderr or result.stdout).strip()
         return True, result.stdout.strip()
@@ -148,20 +134,12 @@ class AgentHandler(BaseHTTPRequestHandler):
 
     # ---------- helpers ----------
     def _cors(self):
-        # Echo back the exact Origin header to satisfy Chrome/Safari
-        # Private Network Access (PNA) requirements. Chrome 104+ requires
-        # an explicit origin (not *) in the preflight response when accessing
-        # localhost from an HTTPS page.
-        origin = self.headers.get("Origin", "")
-        if origin:
-            self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Vary", "Origin")
-        else:
-            self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        # Private Network Access: required by Chrome/Safari when an HTTPS page
-        # accesses HTTP localhost. Without this, modern browsers block the call.
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Access-Control-Request-Private-Network")
+        # Private Network Access (Chrome 104+): explicitly allow requests
+        # from public HTTPS origins (e.g. https://zebra.facore.cl) to
+        # http://localhost. Without this, modern Chrome blocks the call.
         self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Access-Control-Max-Age", "86400")
 
@@ -224,9 +202,6 @@ class AgentHandler(BaseHTTPRequestHandler):
             copies = max(1, int(data.get("copies", 1)))
         except (TypeError, ValueError):
             copies = 1
-
-        # Debug log
-        sys.stderr.write(f"[ZebraLab] Print → impresora: {printer} | copies: {copies} | ZPL ({len(zpl)} chars): {zpl[:120].replace(chr(10),' ')}...\n")
 
         if not zpl or "^XA" not in zpl:
             self._json(400, {"error": "ZPL inválido (debe contener ^XA)"})

@@ -37,11 +37,8 @@ function agentUrl(path) {
 export async function pingAgent() {
     try {
         const ctrl = new AbortController();
-        const timeout = setTimeout(() => ctrl.abort(), 4000);
-        const res = await fetch(agentUrl("/health"), {
-            signal: ctrl.signal,
-            mode: "cors",
-        });
+        const timeout = setTimeout(() => ctrl.abort(), 2000);
+        const res = await fetch(agentUrl("/health"), { signal: ctrl.signal });
         clearTimeout(timeout);
         if (!res.ok) return null;
         return await res.json();

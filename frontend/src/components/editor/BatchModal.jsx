@@ -77,11 +77,9 @@ export default function BatchModal({ open, onClose, design, variables, agentInfo
         setBusy(true);
         setError("");
         try {
-            // Build a single ZPL stream with all rows substituted (multi-up aware)
+            // Build a single ZPL stream with all rows substituted (and quantity applied)
             let combinedZpl = "";
             let printed = 0;
-            const cols = design.layout?.columns || 1;
-
             for (const row of parsed.rows) {
                 const subs = {};
                 for (const v of variables) {
@@ -93,24 +91,9 @@ export default function BatchModal({ open, onClose, design, variables, agentInfo
                     const parsedQty = parseInt(String(row[quantityColumn]), 10);
                     if (Number.isFinite(parsedQty) && parsedQty > 0) qty = parsedQty;
                 }
-
-                // Multi-up packing: full strips + optional partial strip with blank cells
-                const fullStrips = Math.floor(qty / cols);
-                const remainder = qty % cols;
-
-                if (fullStrips > 0) {
-                    const { zpl } = await generateZpl(design, subs);
-                    for (let i = 0; i < fullStrips; i++) {
-                        combinedZpl += zpl;
-                    }
-                    printed += fullStrips * cols;
-                }
-
-                if (remainder > 0) {
-                    const { zpl: partialZpl } = await generateZpl(design, subs, remainder);
-                    combinedZpl += partialZpl;
-                    printed += remainder;
-                }
+                const { zpl } = await generateZpl(design, subs);
+                combinedZpl += zpl.repeat(qty);
+                printed += qty;
             }
             const cfg = getAgentConfig();
             await printZplDirect({
